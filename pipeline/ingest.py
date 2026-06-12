@@ -47,7 +47,7 @@ def fetch_source(source: dict) -> str:
     raise ValueError(f"Unknown source type: {source_type}")
 
 
-def process_source(client: OpenAI, db, source: dict) -> tuple[int, int, bool]:
+def process_source(client: OpenAI, db, source: dict) -> tuple[int, int, bool, dict[str, int]]:
     source_id = source["id"]
     label = source.get("label", source_id)
     logger.info("Processing source: %s", label)
@@ -56,14 +56,22 @@ def process_source(client: OpenAI, db, source: dict) -> tuple[int, int, bool]:
         raw_text = fetch_source(source)
     except Exception as exc:
         logger.error("Failed to fetch %s: %s", source_id, exc)
-        return 0, 1, False
+        return 0, 1, False, {}
 
     if not raw_text.strip():
         logger.warning("Empty text for %s", source_id)
-        return 0, 1, False
+        return 0, 1, False, {}
 
-    inserted, failed = process_text(client, db, raw_text, source_id)
-    return inserted, failed, True
+    inserted, failed, stats = process_text(
+        client,
+        db,
+        raw_text,
+        source_id,
+        chunk_size_words=source.get("chunk_size_words", 4000),
+        chunk_overlap_words=source.get("chunk_overlap_words", 200),
+        source_format=source.get("source_format"),
+    )
+    return inserted, failed, True, stats
 
 
 def main() -> None:
@@ -81,15 +89,26 @@ def main() -> None:
         if source.get("enabled", True) is False:
             logger.info("Skipping disabled source: %s", source.get("id"))
             continue
-        inserted, failed, fetch_ok = process_source(client, db, source)
+        inserted, failed, fetch_ok, stats = process_source(client, db, source)
         total_inserted += inserted
         total_failed += failed
         logger.info("Source %s: %d inserted, %d failed", source["id"], inserted, failed)
+        if stats:
+            logger.info(
+                "  Explanation paths: reformat=%d generate=%d | sata=%d | no_source_rationale=%d",
+                stats.get("reformat", 0),
+                stats.get("generate", 0),
+                stats.get("sata", 0),
+                stats.get("missing_rationale", 0),
+            )
 
-        if fetch_ok and inserted > 0:
+        skip_archive = source.get("skip_archive", False)
+        if fetch_ok and inserted > 0 and not skip_archive:
             archive_source(source, inserted=inserted, failed=failed)
             archived += 1
             logger.info("Archived %s → sources_archive.json", source["id"])
+        elif fetch_ok and inserted > 0 and skip_archive:
+            logger.info("Skipping archive for %s (skip_archive=true — gate/test run)", source["id"])
         elif fetch_ok and inserted == 0:
             logger.warning("Source %s fetched OK but 0 questions inserted — left in sources.json", source["id"])
 

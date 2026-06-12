@@ -93,9 +93,12 @@ export type Session = {
   user_id: string;
   mode: QuizMode;
   category_filter: string | null;
+  subcategory_filter?: string[] | null;
   total_questions: number | null;
   correct: number;
   duration_secs: number;
+  current_index?: number;
+  status?: string;
   started_at: string;
   ended_at: string | null;
 };

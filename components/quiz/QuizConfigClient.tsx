@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Clock, Layers, Target } from "lucide-react";
+import { ArrowRight, BookOpen, BookOpenCheck, Clock, Layers, Target } from "lucide-react";
 import {
   NCLEX_CATEGORIES,
   NCLEX_CATEGORY_SHORT,
@@ -11,6 +11,7 @@ import {
   type NclexCategory,
   type QuizMode,
 } from "@/lib/constants";
+import { SUBCATEGORIES } from "@/lib/subcategories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,8 @@ import {
   hasActiveGuestSession,
   shouldShowFreemiumGate,
   startGuestSession,
+  syncGuestWithServer,
+  applyServerGuestStatus,
   type GuestSession,
 } from "@/lib/guest";
 import { FreemiumGateModal } from "@/components/FreemiumGateModal";
@@ -39,7 +42,11 @@ export function QuizConfigClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<QuizMode>("review");
-  const [categories, setCategories] = useState<string[]>([]);
+  const [sectionCategory, setSectionCategory] = useState<string | null>(null);
+  const [subcategories, setSubcategories] = useState<string[]>([]);
+  const [subcategoryCounts, setSubcategoryCounts] = useState<
+    Record<string, Record<string, number>>
+  >({});
   const [countPreset, setCountPreset] = useState<number | "custom">(10);
   const [customCount, setCustomCount] = useState(15);
   const [loading, setLoading] = useState(false);
@@ -59,6 +66,7 @@ export function QuizConfigClient() {
       .then((r) => r.json())
       .then((data) => {
         if (typeof data.sharedTotal === "number") setBankTotal(data.sharedTotal);
+        if (data.bySubcategory) setSubcategoryCounts(data.bySubcategory);
       })
       .catch(() => {});
   }, []);
@@ -80,15 +88,16 @@ export function QuizConfigClient() {
         setMode(paramMode);
       }
       if (paramCategory && NCLEX_CATEGORIES.includes(paramCategory as NclexCategory)) {
-        setCategories([paramCategory]);
+        setSectionCategory(paramCategory);
         setMode("section");
       }
 
       if (guest) {
         setCountPreset(GUEST_MAX_QUESTIONS);
-        const remaining = getRemainingFreeQuestions();
+        const serverStatus = await syncGuestWithServer();
+        const remaining = serverStatus?.remaining ?? getRemainingFreeQuestions();
         setRemainingFree(remaining);
-        if (shouldShowFreemiumGate()) setShowGate(true);
+        if (serverStatus?.gated || shouldShowFreemiumGate()) setShowGate(true);
         else if (hasActiveGuestSession()) router.replace("/quiz/guest");
       } else {
         const paramCount = searchParams.get("count");
@@ -116,15 +125,28 @@ export function QuizConfigClient() {
         ? Math.min(Math.max(customCount, 1), 100)
         : countPreset;
 
-  function toggleCategory(cat: string) {
-    setCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+  function selectSectionCategory(cat: string) {
+    setSectionCategory(cat);
+    const counts = subcategoryCounts[cat] ?? {};
+    const subs = SUBCATEGORIES[cat as NclexCategory] ?? ["General"];
+    const available = subs.filter((s) => (counts[s] ?? 0) > 0);
+    setSubcategories(available.length > 0 ? available : ["General"]);
+  }
+
+  function toggleSubcategory(sub: string) {
+    setSubcategories((prev) =>
+      prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub]
     );
   }
 
   async function startAuthenticatedSession(questionCount: number) {
-    if (mode === "section" && categories.length === 0) {
-      setError("Select at least one category");
+    if (mode === "section" && !sectionCategory) {
+      setError("Select a category");
+      setLoading(false);
+      return;
+    }
+    if (mode === "section" && subcategories.length === 0) {
+      setError("Select at least one subcategory");
       setLoading(false);
       return;
     }
@@ -134,7 +156,8 @@ export function QuizConfigClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode,
-        category_filter: mode === "section" ? categories[0] : null,
+        category_filter: mode === "section" ? sectionCategory : null,
+        subcategory_filter: mode === "section" ? subcategories : null,
         total_questions: questionCount,
       }),
     });
@@ -163,13 +186,19 @@ export function QuizConfigClient() {
     }
 
     const categoryParam =
-      mode === "section" && categories.length === 1 ? categories[0] : null;
+      mode === "section" && sectionCategory ? sectionCategory : null;
     const res = await fetch(
       `/api/guest/questions?count=${remaining}${
         categoryParam ? `&category=${encodeURIComponent(categoryParam)}` : ""
       }`
     );
     const data = await res.json();
+    if (res.status === 403) {
+      applyServerGuestStatus(data);
+      setShowGate(true);
+      setLoading(false);
+      return;
+    }
     if (!res.ok) throw new Error(data.error || "Failed to load questions");
 
     const guestMode: GuestSession["mode"] =
@@ -229,7 +258,7 @@ export function QuizConfigClient() {
 
   return (
     <>
-      <div className="mx-auto min-h-screen max-w-[640px] px-6 py-12">
+      <div className="mx-auto min-h-screen w-full max-w-[640px] px-4 py-8 sm:max-w-xl sm:px-6 md:max-w-2xl md:py-12 lg:max-w-[640px]">
         <div className="mb-8 flex items-center justify-between">
           <Link href={isGuest ? "/" : "/home"} className="flex items-center gap-2">
             <LogoMark size="sm" />
@@ -265,7 +294,7 @@ export function QuizConfigClient() {
                     type="button"
                     onClick={() => setMode(m.value)}
                     className={cn(
-                      "flex min-h-[120px] flex-col rounded-xl border p-4 text-left transition-all",
+                      "flex min-h-[120px] flex-col rounded-xl border p-4 text-left transition-all sm:min-h-[132px]",
                       selected
                         ? "border-2 border-indigo bg-indigo-50"
                         : "border-border bg-white hover:border-slate-300"
@@ -285,30 +314,85 @@ export function QuizConfigClient() {
             </div>
           </div>
 
-          {mode === "section" && (
-            <div>
-              <p className="mb-3 text-sm font-medium text-foreground">Categories</p>
-              <div className="flex flex-wrap gap-2">
-                {NCLEX_CATEGORIES.map((cat) => {
-                  const selected = categories.includes(cat);
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      title={cat}
-                      onClick={() => toggleCategory(cat)}
-                      className={cn(
-                        "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                        selected
-                          ? "border-indigo bg-indigo-50 text-indigo"
-                          : "border-border bg-white text-muted-foreground hover:border-slate-300"
-                      )}
-                    >
-                      {NCLEX_CATEGORY_SHORT[cat]}
-                    </button>
-                  );
-                })}
+          {!isGuest && (
+            <Link
+              href="/study-guide"
+              className="flex items-center gap-4 rounded-xl border border-border bg-white p-4 transition-colors hover:border-indigo hover:bg-indigo-50/50"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50">
+                <BookOpenCheck className="h-5 w-5 text-violet-600" strokeWidth={1.5} />
               </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">Custom study guide</p>
+                <p className="text-xs text-muted-foreground">
+                  Paste your notes and generate a personalized quiz
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          )}
+
+          {mode === "section" && (
+            <div className="space-y-4">
+              <div>
+                <p className="mb-3 text-sm font-medium text-foreground">Category</p>
+                <div className="flex flex-wrap gap-2">
+                  {NCLEX_CATEGORIES.map((cat) => {
+                    const selected = sectionCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        title={cat}
+                        onClick={() => selectSectionCategory(cat)}
+                        className={cn(
+                          "min-h-[44px] rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                          selected
+                            ? "border-indigo bg-indigo-50 text-indigo"
+                            : "border-border bg-white text-muted-foreground hover:border-slate-300"
+                        )}
+                      >
+                        {NCLEX_CATEGORY_SHORT[cat]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {sectionCategory && (
+                <div>
+                  <p className="mb-3 text-sm font-medium text-foreground">Subcategories</p>
+                  <div className="space-y-2">
+                    {(SUBCATEGORIES[sectionCategory as NclexCategory] ?? ["General"]).map(
+                      (sub) => {
+                        const count = subcategoryCounts[sectionCategory]?.[sub] ?? 0;
+                        const disabled = count === 0;
+                        const checked = subcategories.includes(sub);
+                        return (
+                          <label
+                            key={sub}
+                            className={cn(
+                              "flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border px-3 py-2",
+                              disabled && "cursor-not-allowed opacity-50",
+                              checked && !disabled && "border-indigo bg-indigo-50"
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-5 w-5 rounded"
+                              checked={checked}
+                              disabled={disabled}
+                              onChange={() => !disabled && toggleSubcategory(sub)}
+                            />
+                            <span className="flex-1 text-sm">{sub}</span>
+                            <span className="text-xs text-muted-foreground">[{count}]</span>
+                          </label>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -378,7 +462,7 @@ export function QuizConfigClient() {
             className="h-12 w-full"
             disabled={
               loading ||
-              (mode === "section" && categories.length === 0) ||
+              (mode === "section" && (!sectionCategory || subcategories.length === 0)) ||
               (isGuest && (shouldShowFreemiumGate() || remainingFree <= 0))
             }
             onClick={handleStart}

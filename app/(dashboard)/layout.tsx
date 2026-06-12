@@ -16,6 +16,7 @@ const navItems = [
   { href: "/home", label: "Home", icon: Home, authOnly: true },
   { href: "/quiz/config", label: "Quiz", icon: BookOpen, authOnly: false },
   { href: "/study-guide", label: "Study guide", icon: FileText, authOnly: true },
+  { href: "/study-guides", label: "My guides", icon: FileText, authOnly: true },
   { href: "/analytics", label: "Analytics", icon: BarChart3, authOnly: true },
   { href: "/settings", label: "Settings", icon: Settings, authOnly: true },
 ];
@@ -93,7 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border bg-white md:hidden">
+      <header className="sticky top-0 z-40 border-b border-border bg-white lg:hidden">
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <LogoMark size="sm" />
@@ -133,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </header>
 
       <div className="flex">
-        <aside className="hidden w-60 shrink-0 bg-navy md:block">
+        <aside className="hidden w-60 shrink-0 bg-navy lg:block">
           <div className="sticky top-0 flex h-screen flex-col p-5">
             <div className="mb-8">
               <LogoFull />
@@ -159,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <main className="flex-1 p-4 pb-24 md:p-8 md:pb-8">{children}</main>
+        <main className="flex-1 p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">{children}</main>
       </div>
 
       <MobileBottomNav isGuest={isGuest} />

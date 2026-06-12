@@ -22,6 +22,14 @@ export default async function QuizSessionPage({
   if (!session) redirect("/quiz/config");
   if (session.ended_at) redirect(`/quiz/${params.sessionId}/review`);
 
+  const { data: existingAnswers } = await supabase
+    .from("session_answers")
+    .select("question_id, answer_given, is_correct")
+    .eq("session_id", params.sessionId);
+
+  const cachedIndex =
+    typeof session.current_index === "number" ? session.current_index : undefined;
+
   const { data: sq } = await supabase
     .from("session_questions")
     .select("question_id, order_index, questions(*)")
@@ -38,6 +46,8 @@ export default async function QuizSessionPage({
     <QuizSessionClient
       session={session as Session}
       sessionQuestions={sessionQuestions}
+      initialAnswers={existingAnswers ?? []}
+      initialIndex={cachedIndex}
     />
   );
 }

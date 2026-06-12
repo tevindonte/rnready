@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [bankTotal, setBankTotal] = useState(0);
   const [customBankTotal, setCustomBankTotal] = useState(0);
+  const [emailOptOut, setEmailOptOut] = useState(false);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -26,6 +27,7 @@ export default function SettingsPage() {
         if (data.profile) {
           setName(data.profile.name ?? "");
           setExamDate(data.profile.exam_date ?? "");
+          setEmailOptOut(Boolean(data.profile.email_opt_out));
         }
         setLoading(false);
       })
@@ -49,7 +51,7 @@ export default function SettingsPage() {
     const res = await fetch("/api/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, exam_date: examDate || null }),
+      body: JSON.stringify({ name, exam_date: examDate || null, email_opt_out: emailOptOut }),
     });
 
     setSaving(false);
@@ -101,6 +103,23 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">
                 Used for your exam countdown on the home dashboard
               </p>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+              <input
+                id="email_opt_out"
+                type="checkbox"
+                checked={emailOptOut}
+                onChange={(e) => setEmailOptOut(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border"
+              />
+              <div>
+                <Label htmlFor="email_opt_out" className="cursor-pointer">
+                  Opt out of study reminder emails
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Turn off inactivity nudges and progress emails. Auth emails still send.
+                </p>
+              </div>
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             {saved && <p className="text-sm text-emerald">Settings saved</p>}

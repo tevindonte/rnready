@@ -1,14 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { FlaskConical } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -40,45 +35,72 @@ const LAB_VALUES = [
   { test: "aPTT", range: "25–35 sec" },
 ];
 
-export function LabValues({ iconOnly }: { iconOnly?: boolean }) {
-  const trigger = iconOnly ? (
+function LabTable() {
+  return (
+    <Table className="px-4 pb-4">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Test</TableHead>
+          <TableHead>Normal range</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {LAB_VALUES.map((lab) => (
+          <TableRow key={lab.test}>
+            <TableCell className="font-medium">{lab.test}</TableCell>
+            <TableCell>{lab.range}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+type LabValuesProps = {
+  iconOnly?: boolean;
+  mobileBar?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+export function LabValues({ iconOnly, mobileBar, open: controlledOpen, onOpenChange }: LabValuesProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+
+  const trigger = (
     <button
       type="button"
-      className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+      onClick={() => setOpen(true)}
+      className={cn(
+        iconOnly
+          ? cn(
+              "flex items-center justify-center rounded-lg transition-colors",
+              mobileBar
+                ? "h-11 w-11 text-slate-500 hover:bg-slate-100"
+                : "h-11 w-11 text-slate-400 hover:bg-white/10 hover:text-white md:h-9 md:w-9"
+            )
+          : "inline-flex min-h-[44px] items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium"
+      )}
       aria-label="Lab values"
     >
-      <FlaskConical className="h-4 w-4" strokeWidth={1.5} />
+      {iconOnly ? (
+        <FlaskConical className={cn("h-5 w-5", !mobileBar && "md:h-4 md:w-4")} strokeWidth={1.5} />
+      ) : (
+        <>
+          <FlaskConical className="mr-2 h-4 w-4" />
+          Lab values
+        </>
+      )}
     </button>
-  ) : (
-    <Button variant="outline" size="sm">
-      Lab values
-    </Button>
   );
 
   return (
-    <Sheet>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Normal lab values</SheetTitle>
-        </SheetHeader>
-        <Table className="mt-4">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Test</TableHead>
-              <TableHead>Normal range</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {LAB_VALUES.map((lab) => (
-              <TableRow key={lab.test}>
-                <TableCell className="font-medium">{lab.test}</TableCell>
-                <TableCell>{lab.range}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </SheetContent>
-    </Sheet>
+    <>
+      {trigger}
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="Normal lab values">
+        <LabTable />
+      </BottomSheet>
+    </>
   );
 }

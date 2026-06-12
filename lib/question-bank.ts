@@ -5,6 +5,7 @@ export type QuestionBankStats = {
   sharedTotal: number;
   customTotal: number;
   byCategory: { category: string; count: number }[];
+  bySubcategory?: Record<string, Record<string, number>>;
 };
 
 export function formatQuestionCount(count: number): string {
@@ -33,7 +34,34 @@ export async function getSharedQuestionBankStats(
   return {
     sharedTotal: sharedTotal ?? 0,
     byCategory,
+    bySubcategory: await getSubcategoryCounts(supabase),
   };
+}
+
+export async function getSubcategoryCounts(
+  supabase: SupabaseClient,
+  category?: string
+): Promise<Record<string, Record<string, number>>> {
+  const { SUBCATEGORIES } = await import("@/lib/subcategories");
+  const result: Record<string, Record<string, number>> = {};
+
+  const categories = category ? [category] : [...NCLEX_CATEGORIES];
+
+  for (const cat of categories) {
+    const subs = SUBCATEGORIES[cat as keyof typeof SUBCATEGORIES] ?? ["General"];
+    result[cat] = {};
+    for (const sub of subs) {
+      const { count } = await supabase
+        .from("questions")
+        .select("*", { count: "exact", head: true })
+        .eq("is_custom", false)
+        .eq("category", cat)
+        .eq("subcategory", sub);
+      result[cat][sub] = count ?? 0;
+    }
+  }
+
+  return result;
 }
 
 export async function getUserCustomQuestionCount(supabase: SupabaseClient): Promise<number> {

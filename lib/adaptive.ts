@@ -106,17 +106,23 @@ export async function selectAdaptiveQuestions(
 export async function selectSectionQuestions(
   category: string,
   count: number,
-  userId: string
+  userId: string,
+  subcategories?: string[]
 ): Promise<string[]> {
   const supabase = await createClient();
   const seen = await getSeenQuestionIds(userId);
 
-  const { data } = await supabase
+  let query = supabase
     .from("questions")
     .select("id")
     .eq("category", category)
-    .eq("is_custom", false)
-    .limit(count * 3);
+    .eq("is_custom", false);
+
+  if (subcategories?.length) {
+    query = query.in("subcategory", subcategories);
+  }
+
+  const { data } = await query.limit(count * 3);
 
   const ids = (data ?? [])
     .map((q) => q.id)

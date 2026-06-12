@@ -15,10 +15,12 @@ import type { Question } from "@/lib/constants";
 import {
   capGuestSession,
   completeGuestSession,
+  completeGuestSessionOnServer,
   getGuestState,
   getRemainingFreeQuestions,
   GUEST_MAX_QUESTIONS,
   recordGuestAnswer,
+  recordGuestAnswerOnServer,
   saveGuestSession,
   shouldShowFreemiumGate,
   type GuestSession,
@@ -109,6 +111,7 @@ export function GuestQuizClient() {
     const correct = Object.values(finalSession.answers).filter((a) => a.correct).length;
     const total = Object.keys(finalSession.answers).length;
     completeGuestSession(finalSession.id);
+    void completeGuestSessionOnServer();
     setResultsStats({ correct, total: total || finalSession.totalQuestions });
     setShowResults(true);
   }
@@ -142,6 +145,9 @@ export function GuestQuizClient() {
 
     setSession(updatedSession);
     saveGuestSession(updatedSession);
+    void recordGuestAnswerOnServer(currentQ.id).then((status) => {
+      if (status?.gated) finishGuestFlow(updatedSession);
+    });
 
     setLastResult({
       isCorrect,
@@ -235,9 +241,8 @@ export function GuestQuizClient() {
         currentIndex={currentIndex}
         totalQuestions={session.totalQuestions}
         getNavStatus={getNavStatus}
-        onNavigate={(i) => {
-          if (!showRationale) setCurrentIndex(i);
-        }}
+        onNavigate={() => {}}
+        forwardOnly
         flagged={flagged}
         currentQuestionId={currentQ.id}
         onToggleFlag={toggleFlag}
@@ -251,7 +256,7 @@ export function GuestQuizClient() {
       >
         <QuestionCard question={question} index={currentIndex} total={session.totalQuestions} />
 
-        <div className="mx-auto mt-8 w-full max-w-[680px] space-y-3">
+        <div className="mx-auto mt-8 w-full max-w-[680px] space-y-3 pb-20 lg:pb-0">
           {Object.entries(question.options)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([letter, text]) => (
@@ -290,7 +295,7 @@ export function GuestQuizClient() {
               >
                 Submit answer
               </Button>
-              <p className="text-center text-xs text-muted-foreground">
+              <p className="hidden text-center text-xs text-muted-foreground lg:block">
                 Tip: press 1–4 or A–D to select, Enter to submit
               </p>
             </>

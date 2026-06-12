@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Brain, LineChart, SlidersHorizontal, Target } from "lucide-react";
+import { Brain, BookOpenCheck, LineChart, SlidersHorizontal, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/LogoMark";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { formatQuestionCount, getSharedQuestionBankStats } from "@/lib/question-bank";
 
 const features = [
   {
@@ -39,7 +41,13 @@ const steps = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const { sharedTotal } = await getSharedQuestionBankStats(createAdminClient());
+  const bankLabel =
+    sharedTotal > 0
+      ? `${formatQuestionCount(sharedTotal)}+ NCLEX-style questions in our bank`
+      : "Growing NCLEX question bank";
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-white">
@@ -56,6 +64,7 @@ export default function LandingPage() {
 
       <main>
         <section className="mx-auto max-w-5xl px-6 py-20 text-center md:py-28">
+          <p className="mb-4 text-sm font-medium text-indigo">{bankLabel}</p>
           <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl md:leading-tight">
             Pass the NCLEX. First try.
           </h1>
@@ -71,6 +80,9 @@ export default function LandingPage() {
               <Link href="/login">Sign in</Link>
             </Button>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Free trial: 10 questions, no credit card required
+          </p>
         </section>
 
         <section className="border-t border-border bg-white py-16">
@@ -153,13 +165,36 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-5xl px-6 py-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              Trusted by nursing students preparing for the NCLEX-RN
-            </p>
+        <section className="border-t border-border bg-indigo-50">
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-6 py-14 text-center md:flex-row md:justify-between md:text-left">
+            <div className="flex items-start gap-3">
+              <BookOpenCheck className="mt-0.5 h-6 w-6 text-indigo" strokeWidth={1.5} />
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Bring your own notes</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Signed-in users can paste study notes and generate a custom quiz session.
+                </p>
+              </div>
+            </div>
+            <Button asChild>
+              <Link href="/signup">Create free account</Link>
+            </Button>
           </div>
         </section>
+
+        <footer className="border-t border-border">
+          <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-muted-foreground md:flex-row">
+            <p>© {new Date().getFullYear()} RNReady</p>
+            <div className="flex gap-4">
+              <Link href="/terms" className="hover:text-foreground">
+                Terms
+              </Link>
+              <Link href="/privacy" className="hover:text-foreground">
+                Privacy
+              </Link>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
   );

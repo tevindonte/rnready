@@ -9,6 +9,9 @@ from pydantic import BaseModel, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
+from subcategories import format_subcategory_prompt, normalize_subcategory
+from category_mapping import EXAM_BOOK_METADATA_PROMPT, map_exam_book_category
+
 NCLEX_CATEGORIES = [
     "Management of Care",
     "Safety and Infection Control",
@@ -66,7 +69,10 @@ For TYPE B (fact content, no explicit question):
 
 For BOTH types:
 - Classify "category" into exactly one of the 8 NCLEX categories (list below)
-- Classify "subcategory" — a short specific topic (e.g. "Cardiac", "Cystic Fibrosis")
+- For "subcategory", you MUST choose from the controlled list below that
+  corresponds to the chosen "category". Pick the closest match — do not
+  invent new subcategory names. If genuinely nothing fits, use the category's
+  "General" subcategory.
 - If SATA: is_ngn: true, ngn_type: "sata", correct_answer as "A,C,D"
 - Otherwise is_ngn: false, ngn_type: null, correct_answer single letter
 
@@ -79,6 +85,11 @@ NCLEX categories:
 - Basic Care and Comfort
 - Health Promotion and Maintenance
 - Psychosocial Integrity
+
+Controlled subcategories by category:
+""" + format_subcategory_prompt() + """
+
+""" + EXAM_BOOK_METADATA_PROMPT + """
 
 OUTPUT FORMAT — strict:
 Return a JSON array. "options" is ALWAYS an object like
@@ -120,7 +131,12 @@ class ExtractedQuestion(BaseModel):
 
 def normalize_options(raw: object) -> dict[str, str]:
     if isinstance(raw, dict):
-        return {str(k).upper().strip(): str(v).strip() for k, v in raw.items() if str(v).strip()}
+        result = {str(k).upper().strip(): str(v).strip() for k, v in raw.items() if str(v).strip()}
+        if result and all(k.isdigit() for k in result):
+            letters = "ABCDEFGHIJ"
+            ordered = sorted(result.items(), key=lambda kv: int(kv[0]))
+            return {letters[i]: text for i, (_, text) in enumerate(ordered) if i < len(letters)}
+        return result
 
     if isinstance(raw, list):
         result: dict[str, str] = {}
@@ -141,6 +157,9 @@ def normalize_category(raw: object) -> str | None:
     if not raw:
         return None
     text = str(raw).strip()
+    mapped = map_exam_book_category(text)
+    if mapped:
+        return mapped
     lower = text.lower()
     for cat in NCLEX_CATEGORIES:
         if cat.lower() == lower or cat.lower() in lower:
@@ -159,6 +178,7 @@ def normalize_item(raw: dict) -> dict:
     cat = normalize_category(item.get("category"))
     if cat:
         item["category"] = cat
+        item["subcategory"] = normalize_subcategory(cat, item.get("subcategory"))
 
     origin = item.get("content_origin", "extracted")
     item["content_origin"] = origin if origin in ("extracted", "generated") else "extracted"
@@ -200,9 +220,17 @@ def extract_questions(
     *,
     retries: int = 3,
     target_count: int | None = None,
+    source_format: str | None = None,
 ) -> list[ExtractedQuestion]:
     user_content = text
-    if target_count:
+    if source_format == "exam_book":
+        user_content = (
+            "This chunk is from a Saunders Q&A or Kaplan NCLEX exam book. "
+            "Extract every complete question WITH its answer block and metadata. "
+            "Keep question + rationale + Client Needs/Category in source_rationale when present.\n\n"
+            + text
+        )
+    elif target_count:
         user_content = (
             f"Generate approximately {target_count} questions total from this content. "
             "Prioritize TYPE B (generated) since user notes are typically fact-dense.\n\n"

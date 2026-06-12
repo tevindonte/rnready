@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RNReady
 
-## Getting Started
+AI-assisted NCLEX-RN preparation for nursing students. Practice questions, readiness analytics, adaptive drills, and custom study guides from your own notes.
 
-First, run the development server:
+## Features
+
+- **Guest trial** — 10 free questions (enforced client + server-side)
+- **Quiz modes** — Review, timed, section, adaptive
+- **Study guides** — Generate custom quizzes from pasted notes (signed-in)
+- **Analytics** — Mastery map, score trends, category breakdown
+- **Exam tools** — Scratch pad, calculator, lab values (touch-optimized on iPad)
+
+## Stack
+
+- Next.js 14 (App Router)
+- Supabase (auth, Postgres, RLS)
+- OpenAI (explanations + study-guide generation)
+- Tailwind CSS + Radix UI
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment variables
+
+Copy `.env.example` to `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_KEY=
+OPENAI_API_KEY=
+```
+
+### 3. Database migrations
+
+Run all SQL files in `supabase/migrations/` in order (001 → 005) in the Supabase SQL editor or via CLI.
+
+### 4. Ingest questions
+
+```bash
+cd pipeline
+pip install -r requirements.txt
+cp .env.example .env   # add Supabase + OpenAI keys
+# Add sources to sources.json, then:
+python ingest.py
+```
+
+### 5. Run the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase auth URLs
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+In Supabase Dashboard → Authentication → URL Configuration, set:
 
-## Learn More
+- **Site URL:** `http://localhost:3000` (or your production domain)
+- **Redirect URLs:** `http://localhost:3000/auth/callback`
 
-To learn more about Next.js, take a look at the following resources:
+Email confirmation and password reset links use `/auth/callback`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run start` | Production server |
+| `npm run lint` | ESLint |
+| `npm test` | Unit tests (Vitest) |
 
-## Deploy on Vercel
+## Project structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+app/              Next.js routes (landing, dashboard, quiz, API)
+components/       UI components
+lib/              Shared logic (adaptive, guest, supabase)
+pipeline/         Question ingestion from PDF/YouTube/web
+supabase/         SQL migrations
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+Private — all rights reserved.

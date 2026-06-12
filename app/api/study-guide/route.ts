@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { extractQuestionsFromNotes, countWords } from "@/lib/extraction";
 import { generateExplanation } from "@/lib/openai";
+import { resolveSourceText } from "@/lib/study-guide-sources";
+import { normalizeSubcategory } from "@/lib/subcategories";
+import { canCreateStudyGuide, type SubscriptionStatus } from "@/lib/entitlements";
 
 const MAX_WORDS = 6000;
 const MIN_QUESTIONS = 5;
@@ -9,52 +12,47 @@ const MAX_QUESTIONS = 30;
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: "OpenAI not configured" }, { status: 503 });
+async function generateQuizFromText(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  text: string,
+  questionCount: number,
+  categoryHint: string | undefined,
+  options: {
+    save: boolean;
+    title?: string;
+    sourceType: string;
+  }
+) {
+  if (countWords(text) > MAX_WORDS) {
+    throw new Error(`Content too long. Maximum ${MAX_WORDS} words.`);
+  }
+  if (text.trim().length < 50) {
+    throw new Error("Not enough content to generate questions.");
   }
 
-  const body = await request.json();
-  const notes = (body.notes as string)?.trim();
-  const questionCount = Math.min(
-    MAX_QUESTIONS,
-    Math.max(MIN_QUESTIONS, Number(body.question_count) || 10)
-  );
-  const categoryHint = body.category as string | undefined;
-
-  if (!notes) {
-    return NextResponse.json({ error: "notes are required" }, { status: 400 });
-  }
-
-  if (countWords(notes) > MAX_WORDS) {
-    return NextResponse.json(
-      { error: `Notes too long. Maximum ${MAX_WORDS} words for v1.` },
-      { status: 400 }
-    );
-  }
-
-  let extracted;
-  try {
-    extracted = await extractQuestionsFromNotes(notes, questionCount);
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Extraction failed" },
-      { status: 500 }
-    );
-  }
-
+  const extracted = await extractQuestionsFromNotes(text, questionCount);
   if (extracted.length === 0) {
-    return NextResponse.json(
-      { error: "Could not generate questions from these notes. Try adding more clinical facts." },
-      { status: 400 }
-    );
+    throw new Error("Could not generate questions from this content. Try adding more clinical facts.");
   }
 
-  const sourceId = `user:${user.id}:${Date.now()}`;
+  let studyGuideId: string | null = null;
+  if (options.save) {
+    const { data: guide, error: guideError } = await supabase
+      .from("study_guides")
+      .insert({
+        owner_id: userId,
+        title: options.title || "Untitled study guide",
+        source_type: options.sourceType,
+        question_count: extracted.length,
+      })
+      .select("id")
+      .single();
+    if (guideError) throw new Error(guideError.message);
+    studyGuideId = guide.id;
+  }
+
+  const sourceId = `user:${userId}:${Date.now()}`;
   const questionIds: string[] = [];
 
   for (const q of extracted) {
@@ -77,7 +75,7 @@ export async function POST(request: Request) {
         options: q.options,
         correct_answer: q.correct_answer,
         category,
-        subcategory: q.subcategory ?? null,
+        subcategory: normalizeSubcategory(category, q.subcategory ?? null),
         is_ngn: q.is_ngn,
         ngn_type: q.ngn_type,
         content_origin: q.content_origin,
@@ -87,35 +85,35 @@ export async function POST(request: Request) {
         explanation_generated_at: new Date().toISOString(),
         source_id: sourceId,
         is_custom: true,
-        custom_owner_id: user.id,
+        custom_owner_id: userId,
+        study_guide_id: studyGuideId,
       })
       .select("id")
       .single();
 
-    if (error || !inserted) {
-      console.error("Insert custom question failed:", error?.message);
-      continue;
-    }
+    if (error || !inserted) continue;
     questionIds.push(inserted.id);
   }
 
   if (questionIds.length === 0) {
-    return NextResponse.json({ error: "Failed to save generated questions" }, { status: 500 });
+    throw new Error("Failed to save generated questions");
   }
 
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
     .insert({
-      user_id: user.id,
+      user_id: userId,
       mode: "custom",
       category_filter: categoryHint ?? null,
       total_questions: questionIds.length,
+      status: "in_progress",
+      current_index: 0,
     })
     .select("id")
     .single();
 
   if (sessionError || !session) {
-    return NextResponse.json({ error: sessionError?.message ?? "Failed to create session" }, { status: 500 });
+    throw new Error(sessionError?.message ?? "Failed to create session");
   }
 
   const sessionQuestions = questionIds.map((questionId, index) => ({
@@ -125,9 +123,105 @@ export async function POST(request: Request) {
   }));
 
   const { error: sqError } = await supabase.from("session_questions").insert(sessionQuestions);
-  if (sqError) {
-    return NextResponse.json({ error: sqError.message }, { status: 500 });
+  if (sqError) throw new Error(sqError.message);
+
+  return { sessionId: session.id, questionCount: questionIds.length, studyGuideId };
+}
+
+export async function POST(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: "OpenAI not configured" }, { status: 503 });
   }
 
-  return NextResponse.json({ sessionId: session.id, questionCount: questionIds.length });
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("subscription_status")
+    .eq("id", user.id)
+    .single();
+
+  const subscriptionStatus = (profile?.subscription_status ?? "free") as SubscriptionStatus;
+  const contentType = request.headers.get("content-type") ?? "";
+
+  try {
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+      const file = form.get("file") as File | null;
+      if (!file) return NextResponse.json({ error: "file is required" }, { status: 400 });
+
+      const save = form.get("save") !== "false";
+      if (save) {
+        const guideCheck = await canCreateStudyGuide(supabase, user.id, subscriptionStatus);
+        if (!guideCheck.allowed) {
+          return NextResponse.json(
+            { error: guideCheck.reason, upgradeRequired: true },
+            { status: 403 }
+          );
+        }
+      }
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const { text, sourceType } = await resolveSourceText({
+        file: { buffer, filename: file.name },
+      });
+
+      const result = await generateQuizFromText(
+        supabase,
+        user.id,
+        text,
+        Math.min(MAX_QUESTIONS, Math.max(MIN_QUESTIONS, Number(form.get("question_count")) || 10)),
+        (form.get("category") as string) || undefined,
+        {
+          save: form.get("save") !== "false",
+          title: (form.get("title") as string) || file.name.replace(/\.[^.]+$/, ""),
+          sourceType,
+        }
+      );
+      return NextResponse.json(result);
+    }
+
+    const body = await request.json();
+    const questionCount = Math.min(
+      MAX_QUESTIONS,
+      Math.max(MIN_QUESTIONS, Number(body.question_count) || 10)
+    );
+    const categoryHint = body.category as string | undefined;
+    const save = body.save !== false;
+    const title = body.title as string | undefined;
+
+    if (save) {
+      const guideCheck = await canCreateStudyGuide(supabase, user.id, subscriptionStatus);
+      if (!guideCheck.allowed) {
+        return NextResponse.json(
+          { error: guideCheck.reason, upgradeRequired: true },
+          { status: 403 }
+        );
+      }
+    }
+
+    const { text, sourceType } = await resolveSourceText({
+      notes: body.notes as string | undefined,
+      url: body.url as string | undefined,
+    });
+
+    const result = await generateQuizFromText(
+      supabase,
+      user.id,
+      text,
+      questionCount,
+      categoryHint,
+      { save, title, sourceType }
+    );
+    return NextResponse.json(result);
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Generation failed" },
+      { status: 400 }
+    );
+  }
 }

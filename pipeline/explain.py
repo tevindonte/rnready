@@ -18,6 +18,50 @@ Rules:
 - Output plain text only, no markdown
 """
 
+REFORMAT_SYSTEM = """
+You are an expert NCLEX nursing educator.
+
+You will receive an existing rationale from a Saunders or Kaplan NCLEX prep book.
+Clean it up for readability while preserving ALL clinical content.
+
+Rules:
+- Keep every clinically important fact — do not shorten or omit details
+- Use 1-3 short paragraphs, plain language, no markdown
+- You may remove publisher boilerplate or redundant headers
+- Do NOT change the medical meaning or correct answer reasoning
+- Output plain text only
+"""
+
+MIN_RATIONALE_CHARS = 50
+
+
+def reformat_explanation(
+    client: OpenAI,
+    source_rationale: str,
+    retries: int = 2,
+) -> str:
+    last_error: Exception | None = None
+    for attempt in range(retries):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": REFORMAT_SYSTEM},
+                    {"role": "user", "content": source_rationale.strip()},
+                ],
+                temperature=0.2,
+                max_tokens=800,
+            )
+            text = (response.choices[0].message.content or "").strip()
+            if text:
+                return text
+        except Exception as exc:
+            last_error = exc
+            time.sleep(2 ** attempt)
+    if last_error:
+        raise RuntimeError(f"Reformat failed: {last_error}")
+    return source_rationale.strip()
+
 
 def generate_explanation(
     client: OpenAI,
@@ -53,3 +97,11 @@ Correct answer: {question.correct_answer}
             last_error = exc
             time.sleep(2 ** attempt)
     raise RuntimeError(f"Explanation failed after {retries} attempts: {last_error}")
+
+
+def get_or_generate_explanation(client: OpenAI, question: ExtractedQuestion) -> tuple[str, str]:
+    """Returns (explanation_text, method) where method is 'reformat' or 'generate'."""
+    rationale = (question.source_verbatim or "").strip()
+    if len(rationale) >= MIN_RATIONALE_CHARS:
+        return reformat_explanation(client, rationale), "reformat"
+    return generate_explanation(client, question), "generate"

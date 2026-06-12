@@ -198,3 +198,66 @@ export function dismissGuestBanner(): void {
   const state = getGuestState();
   setGuestState({ ...state, bannerDismissed: true });
 }
+
+export type GuestServerStatus = {
+  remaining: number;
+  questionsAnswered: number;
+  exhausted: boolean;
+  gated: boolean;
+  maxQuestions: number;
+};
+
+export function applyServerGuestStatus(data: GuestServerStatus): GuestPersistedState {
+  const state = getGuestState();
+  const totalQuestionsAnswered = Math.max(
+    state.totalQuestionsAnswered,
+    data.questionsAnswered ?? 0
+  );
+  const next: GuestPersistedState = {
+    ...state,
+    totalQuestionsAnswered,
+    sessionsUsed: data.gated ? GUEST_MAX_SESSIONS : state.sessionsUsed,
+  };
+  setGuestState(next);
+  return next;
+}
+
+export async function syncGuestWithServer(): Promise<GuestServerStatus | null> {
+  try {
+    const res = await fetch("/api/guest/status");
+    if (!res.ok) return null;
+    const data = (await res.json()) as GuestServerStatus;
+    applyServerGuestStatus(data);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function recordGuestAnswerOnServer(questionId: string): Promise<GuestServerStatus | null> {
+  try {
+    const res = await fetch("/api/guest/answer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question_id: questionId }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as GuestServerStatus;
+    applyServerGuestStatus(data);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function completeGuestSessionOnServer(): Promise<void> {
+  try {
+    const res = await fetch("/api/guest/complete", { method: "POST" });
+    if (res.ok) {
+      const data = (await res.json()) as GuestServerStatus;
+      applyServerGuestStatus(data);
+    }
+  } catch {
+    // ignore network errors; local state still updated
+  }
+}

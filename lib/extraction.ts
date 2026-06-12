@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getOpenAIClient } from "@/lib/openai";
 import { NCLEX_CATEGORIES } from "@/lib/constants";
+import { formatSubcategoryPrompt, normalizeSubcategory } from "@/lib/subcategories";
 
 export const EXTRACTION_SYSTEM = `
 You are an NCLEX content extraction engine. You will be given raw text from
@@ -17,12 +18,19 @@ B) Fact-based content with no explicit question — flashcard-style
 For TYPE A: copy verbatim, content_origin "extracted", source_fact null.
 For TYPE B: source_fact verbatim, generate MCQ around it, content_origin "generated".
 
+For "subcategory", you MUST choose from the controlled list below that
+corresponds to the chosen "category". Pick the closest match — do not
+invent new subcategory names. If genuinely nothing fits, use "General".
+
 Classify category into one of 8 NCLEX categories. options MUST be object {"A":"...","B":"..."} NEVER array.
 Return JSON array. Include: question, options, correct_answer, category, subcategory,
 is_ngn, ngn_type, content_origin, source_fact, source_rationale.
 
 NCLEX categories:
 ${NCLEX_CATEGORIES.map((c) => `- ${c}`).join("\n")}
+
+Controlled subcategories by category:
+${formatSubcategoryPrompt()}
 `;
 
 const categorySchema = z.enum([
@@ -88,6 +96,9 @@ export function parseQuestionItem(raw: unknown): ExtractedQuestion | null {
   let data = parsed.data;
   if (data.correct_answer.includes(",")) {
     data = { ...data, is_ngn: true, ngn_type: "sata" };
+  }
+  if (data.subcategory) {
+    data = { ...data, subcategory: normalizeSubcategory(data.category, data.subcategory) };
   }
   return data;
 }

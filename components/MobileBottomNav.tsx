@@ -21,7 +21,7 @@ export function MobileBottomNav({ isGuest = false }: MobileBottomNavProps) {
   const items = navItems.filter((item) => !isGuest || !item.authOnly);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-white md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
       <div className="flex justify-around py-2">
         {items.map(({ href, label, icon: Icon }) => {
           const active =

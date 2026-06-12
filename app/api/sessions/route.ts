@@ -6,6 +6,7 @@ import {
   selectSectionQuestions,
 } from "@/lib/adaptive";
 import type { QuizMode } from "@/lib/constants";
+import { touchLastSessionAt } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const mode = body.mode as QuizMode;
   const categoryFilter = body.category_filter as string | null;
+  const subcategoryFilter = body.subcategory_filter as string[] | null;
   const totalQuestions = body.total_questions as number;
 
   if (!mode || !totalQuestions) {
@@ -32,7 +34,12 @@ export async function POST(request: Request) {
   if (mode === "adaptive") {
     questionIds = await selectAdaptiveQuestions(user.id, totalQuestions);
   } else if (mode === "section") {
-    questionIds = await selectSectionQuestions(categoryFilter!, totalQuestions, user.id);
+    questionIds = await selectSectionQuestions(
+      categoryFilter!,
+      totalQuestions,
+      user.id,
+      subcategoryFilter ?? undefined
+    );
   } else {
     questionIds = await selectMixedQuestions(totalQuestions, user.id);
   }
@@ -56,7 +63,10 @@ export async function POST(request: Request) {
       user_id: user.id,
       mode,
       category_filter: categoryFilter,
+      subcategory_filter: subcategoryFilter,
       total_questions: Math.min(totalQuestions, questionIds.length),
+      status: "in_progress",
+      current_index: 0,
     })
     .select("id")
     .single();
@@ -76,6 +86,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: sqError.message }, { status: 500 });
   }
 
+  await touchLastSessionAt(supabase, user.id);
+
   return NextResponse.json({ sessionId: session.id });
 }
 
@@ -85,11 +97,25 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { session_id, correct, duration_secs, ended_at } = body;
+  const {
+    session_id,
+    correct,
+    duration_secs,
+    ended_at,
+    current_index,
+    status,
+  } = body;
+
+  const updates: Record<string, unknown> = {};
+  if (correct !== undefined) updates.correct = correct;
+  if (duration_secs !== undefined) updates.duration_secs = duration_secs;
+  if (ended_at !== undefined) updates.ended_at = ended_at;
+  if (current_index !== undefined) updates.current_index = current_index;
+  if (status !== undefined) updates.status = status;
 
   const { error } = await supabase
     .from("sessions")
-    .update({ correct, duration_secs, ended_at })
+    .update(updates)
     .eq("id", session_id)
     .eq("user_id", user.id);
 

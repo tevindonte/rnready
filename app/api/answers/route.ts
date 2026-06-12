@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { session_id, question_id, answer_given, time_secs, confidence } = body;
+  const { session_id, question_id, answer_given, time_secs, confidence, current_index } = body;
 
   const { data: question } = await supabase
     .from("questions")
@@ -51,6 +51,13 @@ export async function POST(request: Request) {
     .from("sessions")
     .update({ correct: correctCount ?? 0 })
     .eq("id", session_id);
+
+  if (typeof current_index === "number") {
+    await supabase
+      .from("sessions")
+      .update({ current_index, status: "in_progress" })
+      .eq("id", session_id);
+  }
 
   return NextResponse.json({
     answer,

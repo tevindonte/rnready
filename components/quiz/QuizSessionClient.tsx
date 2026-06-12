@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { QuestionCard } from "@/components/quiz/QuestionCard";
 import { AnswerOption } from "@/components/quiz/AnswerOption";
 import { RationalePanel } from "@/components/quiz/RationalePanel";
 import { QuizSessionShell } from "@/components/quiz/QuizSessionShell";
 import type { QuestionNavStatus } from "@/components/quiz/QuestionNavigator";
 import { useQuizKeyboard } from "@/hooks/useQuizKeyboard";
+import { useQuizLeaveGuard } from "@/hooks/useQuizLeaveGuard";
 import { normalizeAnswer } from "@/lib/utils";
 import type { Question, QuizMode, Session } from "@/lib/constants";
 
@@ -18,20 +20,72 @@ type SessionQuestion = {
   questions: Question;
 };
 
+type InitialAnswer = {
+  question_id: string;
+  answer_given: string | null;
+  is_correct: boolean | null;
+};
+
 type QuizSessionClientProps = {
   session: Session;
   sessionQuestions: SessionQuestion[];
+  initialAnswers?: InitialAnswer[];
+  initialIndex?: number;
 };
 
-export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClientProps) {
+function buildAnsweredMap(
+  initialAnswers: InitialAnswer[],
+  sessionQuestions: SessionQuestion[]
+) {
+  const questionMap = new Map(sessionQuestions.map((sq) => [sq.question_id, sq.questions]));
+  const answered: Record<string, { given: string; correct: boolean; explanation: string | null }> =
+    {};
+
+  for (const row of initialAnswers) {
+    if (!row.answer_given) continue;
+    const q = questionMap.get(row.question_id);
+    answered[row.question_id] = {
+      given: row.answer_given,
+      correct: row.is_correct ?? false,
+      explanation: q?.explanation ?? null,
+    };
+  }
+  return answered;
+}
+
+function resolveResumeIndex(
+  session: Session,
+  sessionQuestions: SessionQuestion[],
+  initialAnswers: InitialAnswer[],
+  initialIndex?: number
+) {
+  const saved = initialIndex ?? session.current_index ?? 0;
+  const maxIndex = Math.max(0, sessionQuestions.length - 1);
+  const clamped = Math.min(Math.max(0, saved), maxIndex);
+
+  const answeredIds = new Set(
+    initialAnswers.filter((a) => a.answer_given).map((a) => a.question_id)
+  );
+  const firstUnanswered = sessionQuestions.findIndex((sq) => !answeredIds.has(sq.question_id));
+  if (firstUnanswered >= 0 && clamped < firstUnanswered) {
+    return firstUnanswered;
+  }
+  return clamped;
+}
+
+export function QuizSessionClient({
+  session,
+  sessionQuestions,
+  initialAnswers = [],
+  initialIndex,
+}: QuizSessionClientProps) {
   const router = useRouter();
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const resumeIndex = resolveResumeIndex(session, sessionQuestions, initialAnswers, initialIndex);
+  const [currentIndex, setCurrentIndex] = useState(resumeIndex);
   const [selected, setSelected] = useState<string[]>([]);
   const [eliminated, setEliminated] = useState<string[]>([]);
   const [scratchPad, setScratchPad] = useState("");
-  const [answered, setAnswered] = useState<
-    Record<string, { given: string; correct: boolean; explanation: string | null }>
-  >({});
+  const [answered, setAnswered] = useState(() => buildAnsweredMap(initialAnswers, sessionQuestions));
   const [showRationale, setShowRationale] = useState(false);
   const [lastResult, setLastResult] = useState<{
     isCorrect: boolean;
@@ -44,11 +98,31 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
   const elapsedSecs = useRef(0);
   const saveToolsTimer = useRef<NodeJS.Timeout>();
 
+  const { showLeaveDialog, stay, leave } = useQuizLeaveGuard({
+    enabled: session.status !== "completed" && !session.ended_at,
+  });
+
   const current = sessionQuestions[currentIndex];
   const question = current?.questions;
   const isSata = question?.is_ngn && question?.ngn_type === "sata";
   const mode = session.mode as QuizMode;
   const totalCorrect = Object.values(answered).filter((a) => a.correct).length;
+
+  const saveProgress = useCallback(
+    async (index: number) => {
+      sessionStorage.setItem(`quiz-${session.id}-index`, String(index));
+      await fetch("/api/sessions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: session.id,
+          current_index: index,
+          status: "in_progress",
+        }),
+      }).catch(() => {});
+    },
+    [session.id]
+  );
 
   const saveTools = useCallback(
     (scratch: string, strike: string[], calcUsed?: boolean) => {
@@ -67,6 +141,11 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
     },
     [current, session.id]
   );
+
+  useEffect(() => {
+    saveProgress(resumeIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     questionStart.current = Date.now();
@@ -135,6 +214,8 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
 
     setSubmitting(true);
     const timeSecs = Math.round((Date.now() - questionStart.current) / 1000);
+    const nextIndex =
+      currentIndex >= sessionQuestions.length - 1 ? currentIndex : currentIndex + 1;
 
     const res = await fetch("/api/answers", {
       method: "POST",
@@ -144,6 +225,7 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
         question_id: current.question_id,
         answer_given: answerGiven,
         time_secs: timeSecs,
+        current_index: nextIndex,
       }),
     });
 
@@ -171,7 +253,8 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
     } else if (currentIndex >= sessionQuestions.length - 1) {
       await finishSession(data.isCorrect ? totalCorrect + 1 : totalCorrect);
     } else {
-      setCurrentIndex((i) => i + 1);
+      setCurrentIndex(nextIndex);
+      saveProgress(nextIndex);
     }
   }
 
@@ -200,6 +283,7 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
         correct: finalCorrect,
         duration_secs: elapsedSecs.current,
         ended_at: new Date().toISOString(),
+        status: "completed",
       }),
     });
     router.push(`/quiz/${session.id}/review`);
@@ -210,7 +294,9 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
       const correctCount = Object.values(answered).filter((a) => a.correct).length;
       await finishSession(correctCount);
     } else {
-      setCurrentIndex((i) => i + 1);
+      const next = currentIndex + 1;
+      setCurrentIndex(next);
+      saveProgress(next);
     }
   }
 
@@ -245,9 +331,8 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
         currentIndex={currentIndex}
         totalQuestions={sessionQuestions.length}
         getNavStatus={getNavStatus}
-        onNavigate={(i) => {
-          if (!showRationale) setCurrentIndex(i);
-        }}
+        onNavigate={() => {}}
+        forwardOnly
         flagged={flagged}
         currentQuestionId={current.question_id}
         onToggleFlag={toggleFlag}
@@ -263,7 +348,7 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
       >
         <QuestionCard question={question} index={currentIndex} total={sessionQuestions.length} />
 
-        <div className="mx-auto mt-8 w-full max-w-[680px] space-y-3">
+        <div className="mx-auto mt-8 w-full max-w-[680px] space-y-3 pb-20 lg:pb-0">
           {Object.entries(question.options)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([letter, text]) => (
@@ -293,7 +378,7 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
               >
                 Submit answer
               </Button>
-              <p className="text-center text-xs text-muted-foreground">
+              <p className="hidden text-center text-xs text-muted-foreground md:block">
                 Tip: press 1–4 or A–D to select, Enter to submit
               </p>
             </>
@@ -313,6 +398,21 @@ export function QuizSessionClient({ session, sessionQuestions }: QuizSessionClie
           isLast={currentIndex >= sessionQuestions.length - 1}
         />
       )}
+
+      <ConfirmDialog
+        open={showLeaveDialog}
+        onOpenChange={(open) => {
+          if (!open) stay();
+        }}
+        title="Leave quiz?"
+        description="Your progress is saved — you can resume later."
+        confirmLabel="Leave"
+        cancelLabel="Stay"
+        onConfirm={() => {
+          saveProgress(currentIndex);
+          leave();
+        }}
+      />
     </>
   );
 }
