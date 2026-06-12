@@ -4,18 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/EmptyState";
 import { OnboardingModal } from "@/components/OnboardingModal";
+import { LocalDateTime } from "@/components/LocalDateTime";
+import { LocalGreeting } from "@/components/LocalGreeting";
 import { computeReadinessScore } from "@/lib/adaptive";
 import { computeStudyStreak } from "@/lib/streak";
+import { attachSessionScores } from "@/lib/session-score";
 import { AlertTriangle, ArrowRight, BarChart3, BookOpen, Calendar, Flame, Play } from "lucide-react";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
 
 function formatMode(mode: string): string {
   return mode.charAt(0).toUpperCase() + mode.slice(1);
@@ -50,13 +46,15 @@ export default async function HomePage() {
     .eq("user_id", user.id)
     .not("ended_at", "is", null);
 
-  const { data: recentSessions } = await supabase
+  const { data: recentSessionsRaw } = await supabase
     .from("sessions")
     .select("*")
     .eq("user_id", user.id)
     .not("ended_at", "is", null)
     .order("ended_at", { ascending: false })
     .limit(3);
+
+  const recentSessions = await attachSessionScores(supabase, recentSessionsRaw ?? []);
 
   const { data: inProgressSession } = await supabase
     .from("sessions")
@@ -77,18 +75,15 @@ export default async function HomePage() {
   const name = profile?.name || user.email?.split("@")[0] || "Student";
   const sessionsThisWeek = weekSessions?.length ?? 0;
   const questionsAnswered = allAnswers?.length ?? 0;
-  const hasSessions = (recentSessions?.length ?? 0) > 0;
+  const hasSessions = recentSessions.length > 0;
   const studyStreak = computeStudyStreak(
     (allCompletedSessions ?? []).map((s) => s.ended_at)
   );
 
   const avgScore =
-    recentSessions && recentSessions.length > 0
+    recentSessions.length > 0
       ? Math.round(
-          recentSessions.reduce((sum, s) => {
-            const total = s.total_questions ?? 0;
-            return sum + (total > 0 ? (s.correct / total) * 100 : 0);
-          }, 0) / recentSessions.length
+          recentSessions.reduce((sum, s) => sum + s.percent, 0) / recentSessions.length
         )
       : 0;
 
@@ -111,9 +106,7 @@ export default async function HomePage() {
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            {getGreeting()}, {name}.
-          </h1>
+          <LocalGreeting name={name} />
           {examDays !== null && examDays > 0 && (
             <p className="mt-1 text-muted-foreground">
               Exam in{" "}
@@ -258,12 +251,7 @@ export default async function HomePage() {
         <div>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">Recent sessions</h2>
           <div className="space-y-2">
-            {recentSessions!.map((session) => {
-              const score =
-                session.total_questions && session.total_questions > 0
-                  ? Math.round((session.correct / session.total_questions) * 100)
-                  : 0;
-              return (
+            {recentSessions.map((session) => (
                 <div
                   key={session.id}
                   className="flex items-center justify-between rounded-xl border border-border bg-white p-4"
@@ -274,19 +262,18 @@ export default async function HomePage() {
                         {formatMode(session.mode)}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {new Date(session.ended_at!).toLocaleDateString()}
+                        <LocalDateTime value={session.ended_at!} />
                       </span>
                     </div>
                     <p className="mt-0.5 text-sm text-muted-foreground">
-                      {session.correct}/{session.total_questions} correct ({score}%)
+                      {session.correct}/{session.total} correct ({session.percent}%)
                     </p>
                   </div>
                   <Button variant="ghost" size="sm" asChild>
                     <Link href={`/quiz/${session.id}/review`}>Review</Link>
                   </Button>
                 </div>
-              );
-            })}
+              ))}
           </div>
         </div>
       ) : (

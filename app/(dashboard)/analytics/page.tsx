@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeReadinessScore } from "@/lib/adaptive";
 import { getQuestionBankStats } from "@/lib/question-bank";
+import { attachSessionScores } from "@/lib/session-score";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/EmptyState";
 import { QuestionBankCategoryGrid, QuestionBankSummary } from "@/components/QuestionBankSummary";
@@ -37,18 +38,15 @@ export default async function AnalyticsPage() {
     .not("ended_at", "is", null)
     .order("ended_at", { ascending: false });
 
-  const completedSessions = sessions ?? [];
+  const completedSessions = await attachSessionScores(supabase, sessions ?? []);
   const hasData = completedSessions.length > 0;
 
   const scoreChartData = completedSessions
     .slice()
     .reverse()
     .map((s) => ({
-      date: new Date(s.ended_at!).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      score:
-        s.total_questions && s.total_questions > 0
-          ? Math.round((s.correct / s.total_questions) * 100)
-          : 0,
+      at: s.ended_at!,
+      score: s.percent,
     }));
 
   const { weightedScore, level, categoryScores } = await computeReadinessScore(user.id);

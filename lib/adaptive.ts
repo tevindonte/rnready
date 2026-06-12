@@ -150,6 +150,39 @@ export async function selectMixedQuestions(
   return shuffle(ids).slice(0, count);
 }
 
+export async function topUpQuestionIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  questionIds: string[],
+  targetCount: number,
+  filters?: { category?: string; subcategories?: string[] }
+): Promise<string[]> {
+  if (questionIds.length >= targetCount) {
+    return questionIds.slice(0, targetCount);
+  }
+
+  const picked = new Set(questionIds);
+  let query = supabase.from("questions").select("id").eq("is_custom", false);
+
+  if (filters?.category) {
+    query = query.eq("category", filters.category);
+    if (filters.subcategories?.length) {
+      query = query.in("subcategory", filters.subcategories);
+    }
+  }
+
+  const { data } = await query.limit(Math.max(targetCount * 3, 50));
+  const topped = [...questionIds];
+
+  for (const row of shuffle(data ?? [])) {
+    if (picked.has(row.id)) continue;
+    picked.add(row.id);
+    topped.push(row.id);
+    if (topped.length >= targetCount) break;
+  }
+
+  return topped;
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {

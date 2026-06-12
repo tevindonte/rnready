@@ -106,7 +106,6 @@ export function QuizSessionClient({
   const question = current?.questions;
   const isSata = question?.is_ngn && question?.ngn_type === "sata";
   const mode = session.mode as QuizMode;
-  const totalCorrect = Object.values(answered).filter((a) => a.correct).length;
 
   const saveProgress = useCallback(
     async (index: number) => {
@@ -251,7 +250,7 @@ export function QuizSessionClient({
     if (mode === "review") {
       setShowRationale(true);
     } else if (currentIndex >= sessionQuestions.length - 1) {
-      await finishSession(data.isCorrect ? totalCorrect + 1 : totalCorrect);
+      await finishSession();
     } else {
       setCurrentIndex(nextIndex);
       saveProgress(nextIndex);
@@ -273,14 +272,12 @@ export function QuizSessionClient({
     });
   }
 
-  async function finishSession(correctCount?: number) {
-    const finalCorrect = correctCount ?? totalCorrect;
+  async function finishSession() {
     await fetch("/api/sessions", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         session_id: session.id,
-        correct: finalCorrect,
         duration_secs: elapsedSecs.current,
         ended_at: new Date().toISOString(),
         status: "completed",
@@ -291,8 +288,7 @@ export function QuizSessionClient({
 
   async function advanceOrFinish() {
     if (currentIndex >= sessionQuestions.length - 1) {
-      const correctCount = Object.values(answered).filter((a) => a.correct).length;
-      await finishSession(correctCount);
+      await finishSession();
     } else {
       const next = currentIndex + 1;
       setCurrentIndex(next);

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SessionReviewClient } from "@/components/quiz/SessionReviewClient";
+import { computeSessionScore } from "@/lib/session-score";
 
 export default async function SessionReviewPage({
   params,
@@ -34,8 +35,13 @@ export default async function SessionReviewPage({
     .eq("session_id", params.sessionId);
 
   const answerMap = new Map((answers ?? []).map((a) => [a.question_id, a]));
-  const total = session.total_questions ?? sq?.length ?? 0;
-  const correct = session.correct ?? 0;
+  const questionCount = sq?.length ?? 0;
+  const score = computeSessionScore(
+    questionCount,
+    answers ?? [],
+    session.correct,
+    session.total_questions
+  );
 
   const questions = (sq ?? []).map((item, index) => {
     const q = item.questions as unknown as {
@@ -64,8 +70,8 @@ export default async function SessionReviewPage({
     <SessionReviewClient
       sessionId={params.sessionId}
       mode={session.mode}
-      correct={correct}
-      total={total}
+      correct={score.correct}
+      total={score.total}
       durationSecs={session.duration_secs}
       questions={questions}
     />

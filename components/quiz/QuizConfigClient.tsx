@@ -163,6 +163,15 @@ export function QuizConfigClient() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to create session");
+    if (
+      typeof data.questionCount === "number" &&
+      typeof data.requestedCount === "number" &&
+      data.questionCount < data.requestedCount
+    ) {
+      setError(
+        `Only ${data.questionCount} questions were available (you requested ${data.requestedCount}). Starting with what we have.`
+      );
+    }
     router.push(`/quiz/${data.sessionId}`);
   }
 

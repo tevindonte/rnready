@@ -10,7 +10,7 @@ import {
 } from "recharts";
 
 type ScoreChartProps = {
-  data: { date: string; score: number }[];
+  data: { at: string; score: number }[];
 };
 
 export function ScoreChart({ data }: ScoreChartProps) {
@@ -20,11 +20,19 @@ export function ScoreChart({ data }: ScoreChartProps) {
     );
   }
 
+  const chartData = data.map((point) => ({
+    ...point,
+    label: new Date(point.at).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    }),
+  }));
+
   return (
     <ResponsiveContainer width="100%" height={200}>
-      <LineChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+      <LineChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
         <XAxis
-          dataKey="date"
+          dataKey="label"
           tick={{ fontSize: 11, fill: "#64748B" }}
           axisLine={false}
           tickLine={false}
@@ -36,6 +44,16 @@ export function ScoreChart({ data }: ScoreChartProps) {
           tickLine={false}
         />
         <Tooltip
+          labelFormatter={(_, payload) => {
+            const at = payload?.[0]?.payload?.at as string | undefined;
+            return at
+              ? new Date(at).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "";
+          }}
           contentStyle={{
             borderRadius: 8,
             border: "1px solid #E2E8F0",

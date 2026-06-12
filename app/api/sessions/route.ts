@@ -4,9 +4,11 @@ import {
   selectAdaptiveQuestions,
   selectMixedQuestions,
   selectSectionQuestions,
+  topUpQuestionIds,
 } from "@/lib/adaptive";
 import type { QuizMode } from "@/lib/constants";
 import { touchLastSessionAt } from "@/lib/entitlements";
+import { recalculateSessionScore } from "@/lib/session-score";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No questions available. Run the ingestion pipeline first." }, { status: 400 });
   }
 
+  questionIds = await topUpQuestionIds(
+    supabase,
+    questionIds,
+    totalQuestions,
+    mode === "section" && categoryFilter
+      ? { category: categoryFilter, subcategories: subcategoryFilter ?? undefined }
+      : undefined
+  );
+
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
     .insert({
@@ -88,7 +99,11 @@ export async function POST(request: Request) {
 
   await touchLastSessionAt(supabase, user.id);
 
-  return NextResponse.json({ sessionId: session.id });
+  return NextResponse.json({
+    sessionId: session.id,
+    questionCount: sessionQuestions.length,
+    requestedCount: totalQuestions,
+  });
 }
 
 export async function PATCH(request: Request) {
@@ -107,11 +122,18 @@ export async function PATCH(request: Request) {
   } = body;
 
   const updates: Record<string, unknown> = {};
-  if (correct !== undefined) updates.correct = correct;
   if (duration_secs !== undefined) updates.duration_secs = duration_secs;
   if (ended_at !== undefined) updates.ended_at = ended_at;
   if (current_index !== undefined) updates.current_index = current_index;
   if (status !== undefined) updates.status = status;
+
+  if (ended_at !== undefined || status === "completed") {
+    const score = await recalculateSessionScore(supabase, session_id);
+    updates.correct = score.correct;
+    updates.total_questions = score.total;
+  } else if (correct !== undefined) {
+    updates.correct = correct;
+  }
 
   const { error } = await supabase
     .from("sessions")

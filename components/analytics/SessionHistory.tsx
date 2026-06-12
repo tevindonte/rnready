@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Table,
@@ -7,12 +9,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { LocalDateTime } from "@/components/LocalDateTime";
 
 type SessionRow = {
   id: string;
   mode: string;
   correct: number;
-  total_questions: number | null;
+  total: number;
+  percent: number;
   ended_at: string | null;
   started_at: string;
 };
@@ -34,25 +38,23 @@ export function SessionHistory({ sessions }: { sessions: SessionRow[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sessions.map((s) => {
-          const total = s.total_questions ?? 0;
-          const pct = total > 0 ? Math.round((s.correct / total) * 100) : 0;
-          return (
-            <TableRow key={s.id}>
-              <TableCell>
-                {new Date(s.ended_at ?? s.started_at).toLocaleDateString()}
-              </TableCell>
-              <TableCell className="capitalize text-muted-foreground">{s.mode}</TableCell>
-              <TableCell>{pct}%</TableCell>
-              <TableCell>{total}</TableCell>
-              <TableCell>
-                <Link href={`/quiz/${s.id}/review`} className="text-sm text-primary hover:underline">
-                  Review
-                </Link>
-              </TableCell>
-            </TableRow>
-          );
-        })}
+        {sessions.map((s) => (
+          <TableRow key={s.id}>
+            <TableCell>
+              <LocalDateTime value={s.ended_at ?? s.started_at} variant="short" />
+            </TableCell>
+            <TableCell className="capitalize text-muted-foreground">{s.mode}</TableCell>
+            <TableCell>{s.percent}%</TableCell>
+            <TableCell>
+              {s.correct}/{s.total}
+            </TableCell>
+            <TableCell>
+              <Link href={`/quiz/${s.id}/review`} className="text-sm text-primary hover:underline">
+                Review
+              </Link>
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );
