@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GUEST_MAX_QUESTIONS } from "@/lib/guest";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const requested = parseInt(searchParams.get("count") ?? String(GUEST_MAX_QUESTIONS), 10);

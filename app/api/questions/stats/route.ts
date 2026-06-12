@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getQuestionBankStats } from "@/lib/question-bank";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const admin = createAdminClient();
   const supabase = await createClient();

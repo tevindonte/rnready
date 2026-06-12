@@ -7,6 +7,8 @@ const MAX_WORDS = 6000;
 const MIN_QUESTIONS = 5;
 const MAX_QUESTIONS = 30;
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

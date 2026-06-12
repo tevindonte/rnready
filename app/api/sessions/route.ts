@@ -7,6 +7,8 @@ import {
 } from "@/lib/adaptive";
 import type { QuizMode } from "@/lib/constants";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
