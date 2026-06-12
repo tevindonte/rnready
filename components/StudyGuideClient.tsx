@@ -9,8 +9,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import type { QuestionStyle } from "@/lib/extraction";
 
 const QUESTION_COUNTS = [5, 10, 15, 20, 25, 30];
+const QUESTION_STYLES: {
+  value: QuestionStyle;
+  label: string;
+  example: string;
+  hint: string;
+  recommended?: boolean;
+}[] = [
+  {
+    value: "nclex_scenario",
+    label: "NCLEX-style scenarios",
+    example: '"A nurse is caring for a client who..."',
+    hint: "Best for clinical content and case-based reasoning practice",
+  },
+  {
+    value: "direct_recall",
+    label: "Direct recall",
+    example: '"What is the normal range for potassium?"',
+    hint: "Best for definitions, lab values, drug facts, and quick review",
+  },
+  {
+    value: "mixed",
+    label: "Mixed",
+    example: "AI picks the best format per question",
+    hint: "Safest general-purpose default for mixed note types",
+    recommended: true,
+  },
+];
 const TABS = [
   { id: "text", label: "Paste text" },
   { id: "file", label: "Upload file" },
@@ -33,6 +61,7 @@ export function StudyGuideClient() {
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState("");
+  const [questionStyle, setQuestionStyle] = useState<QuestionStyle>("mixed");
   const [count, setCount] = useState(10);
   const [title, setTitle] = useState("");
   const [saveGuide, setSaveGuide] = useState(true);
@@ -61,6 +90,7 @@ export function StudyGuideClient() {
         const form = new FormData();
         form.append("file", file);
         form.append("question_count", String(count));
+        form.append("question_style", questionStyle);
         form.append("save", String(saveGuide));
         if (category) form.append("category", category);
         if (title.trim()) form.append("title", title.trim());
@@ -74,6 +104,7 @@ export function StudyGuideClient() {
             notes: tab === "text" ? notes : undefined,
             url: tab === "link" ? url : undefined,
             question_count: count,
+            question_style: questionStyle,
             category: category || undefined,
             title: title.trim() || undefined,
             save: saveGuide,
@@ -193,6 +224,48 @@ export function StudyGuideClient() {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-3">
+            <Label>Question style</Label>
+            <div className="space-y-2">
+              {QUESTION_STYLES.map((style) => {
+                const selected = questionStyle === style.value;
+                return (
+                  <label
+                    key={style.value}
+                    className={cn(
+                      "flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors",
+                      selected
+                        ? "border-indigo bg-indigo-50/60"
+                        : "border-border bg-white hover:border-slate-300",
+                      style.recommended && !selected && "border-indigo-200"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="question_style"
+                      value={style.value}
+                      checked={selected}
+                      onChange={() => setQuestionStyle(style.value)}
+                      className="mt-1 h-4 w-4 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{style.label}</span>
+                        {style.recommended && (
+                          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo">
+                            Recommended
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{style.example}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{style.hint}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-2">

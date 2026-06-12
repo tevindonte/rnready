@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { extractQuestionsFromNotes, countWords } from "@/lib/extraction";
+import { extractQuestionsFromNotes, countWords, parseQuestionStyle, resolveQuestionStyleTag, type QuestionStyle } from "@/lib/extraction";
 import { generateExplanation } from "@/lib/openai";
 import { resolveSourceText } from "@/lib/study-guide-sources";
 import { normalizeSubcategory } from "@/lib/subcategories";
@@ -22,6 +22,7 @@ async function generateQuizFromText(
     save: boolean;
     title?: string;
     sourceType: string;
+    questionStyle: QuestionStyle;
   }
 ) {
   if (countWords(text) > MAX_WORDS) {
@@ -31,7 +32,7 @@ async function generateQuizFromText(
     throw new Error("Not enough content to generate questions.");
   }
 
-  const extracted = await extractQuestionsFromNotes(text, questionCount);
+  const extracted = await extractQuestionsFromNotes(text, questionCount, options.questionStyle);
   if (extracted.length === 0) {
     throw new Error("Could not generate questions from this content. Try adding more clinical facts.");
   }
@@ -87,6 +88,7 @@ async function generateQuizFromText(
         is_custom: true,
         custom_owner_id: userId,
         study_guide_id: studyGuideId,
+        question_style: resolveQuestionStyleTag(options.questionStyle, q),
       })
       .select("id")
       .single();
@@ -171,6 +173,8 @@ export async function POST(request: Request) {
         file: { buffer, filename: file.name },
       });
 
+      const questionStyle = parseQuestionStyle(form.get("question_style"));
+
       const result = await generateQuizFromText(
         supabase,
         user.id,
@@ -181,6 +185,7 @@ export async function POST(request: Request) {
           save: form.get("save") !== "false",
           title: (form.get("title") as string) || file.name.replace(/\.[^.]+$/, ""),
           sourceType,
+          questionStyle,
         }
       );
       return NextResponse.json(result);
@@ -194,6 +199,7 @@ export async function POST(request: Request) {
     const categoryHint = body.category as string | undefined;
     const save = body.save !== false;
     const title = body.title as string | undefined;
+    const questionStyle = parseQuestionStyle(body.question_style);
 
     if (save) {
       const guideCheck = await canCreateStudyGuide(supabase, user.id, subscriptionStatus);
@@ -216,7 +222,7 @@ export async function POST(request: Request) {
       text,
       questionCount,
       categoryHint,
-      { save, title, sourceType }
+      { save, title, sourceType, questionStyle }
     );
     return NextResponse.json(result);
   } catch (err) {

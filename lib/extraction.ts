@@ -3,6 +3,42 @@ import { getOpenAIClient } from "@/lib/openai";
 import { NCLEX_CATEGORIES } from "@/lib/constants";
 import { formatSubcategoryPrompt, normalizeSubcategory } from "@/lib/subcategories";
 
+export type QuestionStyle = "nclex_scenario" | "direct_recall" | "mixed";
+
+export const QUESTION_STYLE_INSTRUCTIONS: Record<QuestionStyle, string> = {
+  nclex_scenario: `
+All generated questions MUST be NCLEX-style clinical scenarios. Wrap every
+fact in a brief clinical context: "A nurse is caring for a client who..."
+or "A client presents with...". Even simple facts (lab values, drug
+classes) should be tested through a clinical decision-making frame.
+`,
+  direct_recall: `
+Generate DIRECT RECALL questions — no clinical scenario wrapper needed.
+Test the fact plainly:
+  "What is the normal range for serum potassium?"
+  "Which medication class does furosemide belong to?"
+  "What does the acronym SBAR stand for?"
+Still use multiple choice (4 options) or SATA where appropriate — just
+skip the "A nurse is caring for a client..." framing. Keep options
+clinically relevant (real drug names, real values) so this still builds
+NCLEX-relevant knowledge, just without the scenario wrapper.
+`,
+  mixed: `
+For each piece of content, choose whichever format better tests the
+material:
+- Clinical reasoning, prioritization, multi-step care → NCLEX scenario
+- Discrete facts, definitions, lab values, drug classifications → direct
+  recall (no scenario wrapper needed)
+Aim for a natural mix based on the content itself, not a fixed ratio.
+Include "question_style" on each JSON object as either "nclex_scenario"
+or "direct_recall" to indicate which format you used for that question.
+`,
+};
+
+export function buildStudyGuidePrompt(questionStyle: QuestionStyle): string {
+  return EXTRACTION_SYSTEM + "\n\n" + QUESTION_STYLE_INSTRUCTIONS[questionStyle];
+}
+
 export const EXTRACTION_SYSTEM = `
 You are an NCLEX content extraction engine. You will be given raw text from
 a nursing study source (YouTube transcript, PDF page, or webpage). The text
@@ -55,6 +91,7 @@ export const extractedQuestionSchema = z.object({
   source_rationale: z.string().nullable().optional(),
   is_ngn: z.boolean().default(false),
   ngn_type: z.string().nullable().optional(),
+  question_style: z.enum(["nclex_scenario", "direct_recall"]).nullable().optional(),
 });
 
 export type ExtractedQuestion = z.infer<typeof extractedQuestionSchema>;
@@ -119,12 +156,14 @@ function chunkText(text: string, chunkWords = 4000, overlap = 200): string[] {
 
 export async function extractQuestionsFromNotes(
   notes: string,
-  targetCount: number
+  targetCount: number,
+  questionStyle: QuestionStyle = "mixed"
 ): Promise<ExtractedQuestion[]> {
   const client = getOpenAIClient();
   const chunks = chunkText(notes);
   const all: ExtractedQuestion[] = [];
   const seen = new Set<string>();
+  const systemPrompt = buildStudyGuidePrompt(questionStyle);
 
   for (const chunk of chunks) {
     const userContent =
@@ -134,7 +173,7 @@ export async function extractQuestionsFromNotes(
     const response = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: EXTRACTION_SYSTEM },
+        { role: "system", content: systemPrompt },
         { role: "user", content: userContent },
       ],
       temperature: 0,
@@ -161,6 +200,22 @@ export async function extractQuestionsFromNotes(
   }
 
   return all.slice(0, targetCount);
+}
+
+export function resolveQuestionStyleTag(
+  questionStyle: QuestionStyle,
+  extracted: Pick<ExtractedQuestion, "question_style">
+): "nclex_scenario" | "direct_recall" | null {
+  if (questionStyle === "nclex_scenario") return "nclex_scenario";
+  if (questionStyle === "direct_recall") return "direct_recall";
+  return extracted.question_style ?? null;
+}
+
+export function parseQuestionStyle(value: unknown): QuestionStyle {
+  if (value === "nclex_scenario" || value === "direct_recall" || value === "mixed") {
+    return value;
+  }
+  return "mixed";
 }
 
 export function countWords(text: string): number {
