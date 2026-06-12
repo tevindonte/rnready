@@ -1,0 +1,37 @@
+[
+  {
+    "id": "yt:levelup_001",
+    "type": "youtube",
+    "value": "https://www.youtube.com/watch?v=ghBjTfFErK8",
+    "label": "LevelUpRN \u2014 NCLEX Questions and Answers",
+    "processed_at": "2026-06-12T00:19:59.945303+00:00",
+    "stats": {
+      "inserted": 44,
+      "failed": 0
+    }
+  },
+  {
+    "id": "pdf:quickfacts_001",
+    "type": "pdf",
+    "value": "Quick facts for NCLEX\u00ae 2016 (Callion, Regina M) (z-library.sk, 1lib.sk, z-lib.sk).pdf",
+    "page_start": 12,
+    "page_end": 140,
+    "label": "Quick Facts for NCLEX - Callion",
+    "processed_at": "2026-06-12T00:15:57.322115+00:00",
+    "stats": {
+      "inserted": 29,
+      "failed": 0
+    }
+  },
+  {
+    "id": "yt:levelup_001",
+    "type": "youtube",
+    "value": "https://www.youtube.com/watch?v=ghBjTfFErK8",
+    "label": "LevelUpRN \u2014 NCLEX Questions and Answers",
+    "processed_at": "2026-06-11T23:45:45.615080+00:00",
+    "stats": {
+      "inserted": 0,
+      "failed": 6
+    }
+  }
+]
