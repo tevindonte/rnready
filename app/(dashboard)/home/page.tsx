@@ -259,6 +259,50 @@ export default async function HomePage() {
         </Card>
       )}
 
+      <Card className="border-violet-200 bg-violet-50/40">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="flex items-start gap-3">
+            <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" strokeWidth={1.5} />
+            <div>
+              <p className="text-sm font-medium text-foreground">Custom study guides</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Paste notes, generate a quiz, and share a link with classmates.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/study-guides">My guides</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/study-guide">
+                Create guide
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {questionsAnsweredCount > 0 && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+            <div>
+              <p className="text-sm font-medium text-foreground">Missed questions</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Retry questions you got wrong across past sessions.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/quiz/config?mode=missed_review">
+                Missed review
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {hasSessions ? (
         <div>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">Recent sessions</h2>

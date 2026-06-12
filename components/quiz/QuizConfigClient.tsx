@@ -35,6 +35,7 @@ import {
   getSectionAvailableCount,
   SectionCategoryPicker,
 } from "@/components/quiz/SectionCategoryPicker";
+import { getMockOverlapWarnings } from "@/lib/mock-overlap";
 
 const MODE_ICONS = {
   clock: Clock,
@@ -55,6 +56,11 @@ export function QuizConfigClient() {
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [countPreset, setCountPreset] = useState<number | "custom">(10);
   const [customCount, setCustomCount] = useState(15);
+  const [timedShowRationale, setTimedShowRationale] = useState(false);
+  const [missedCount, setMissedCount] = useState(0);
+  const [mockOverlapWarnings, setMockOverlapWarnings] = useState<
+    ReturnType<typeof getMockOverlapWarnings>
+  >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -79,7 +85,9 @@ export function QuizConfigClient() {
           setCategoryCounts(
             Object.fromEntries(data.byCategory.map((row: { category: string; count: number }) => [row.category, row.count]))
           );
+          setMockOverlapWarnings(getMockOverlapWarnings(data.byCategory));
         }
+        if (typeof data.missedCount === "number") setMissedCount(data.missedCount);
       })
       .catch(() => {});
   }, []);
@@ -100,6 +108,15 @@ export function QuizConfigClient() {
 
       if (paramMode && QUIZ_MODES.some((m) => m.value === paramMode)) {
         setMode(paramMode);
+      }
+      const paramCount = searchParams.get("count");
+      if (paramCount && !guest) {
+        const n = parseInt(paramCount, 10);
+        if ([10, 25, 50].includes(n)) setCountPreset(n);
+        else if (n > 0) {
+          setCountPreset("custom");
+          setCustomCount(n);
+        }
       }
       if (paramCategory && NCLEX_CATEGORIES.includes(paramCategory as NclexCategory)) {
         setSectionCategory(paramCategory);
@@ -187,6 +204,7 @@ export function QuizConfigClient() {
           mode === "section" && subcategories.length > 0 ? subcategories : null,
         total_questions: questionCount,
         title: sessionTitle.trim() || null,
+        timed_show_rationale: mode === "timed" ? timedShowRationale : false,
       }),
     });
     const data = await res.json();
@@ -434,6 +452,32 @@ export function QuizConfigClient() {
             </div>
           )}
 
+          {!isGuest && mode === "timed" && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-white p-4">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={timedShowRationale}
+                onChange={(e) => setTimedShowRationale(e.target.checked)}
+              />
+              <div>
+                <p className="text-sm font-medium text-foreground">Show rationale after each answer</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Optional. Real NCLEX hides explanations until the end; leave unchecked for exam
+                  simulation.
+                </p>
+              </div>
+            </label>
+          )}
+
+          {!isGuest && mode === "missed_review" && (
+            <p className="text-sm text-muted-foreground">
+              {missedCount > 0
+                ? `${missedCount} missed question${missedCount === 1 ? "" : "s"} in your history. We'll pull up to ${count}.`
+                : "Complete a session first to build your missed-question queue."}
+            </p>
+          )}
+
           <div>
             <p className="mb-3 text-sm font-medium text-foreground">Question count</p>
             {isGuest ? (
@@ -507,6 +551,7 @@ export function QuizConfigClient() {
             disabled={
               loading ||
               (mode === "section" && (!sectionCategory || sectionAvailable === 0)) ||
+              (mode === "missed_review" && missedCount === 0) ||
               (isGuest && (shouldShowFreemiumGate() || remainingFree <= 0))
             }
             onClick={handleStart}
@@ -528,6 +573,21 @@ export function QuizConfigClient() {
                     until the end. {Math.floor(MOCK_EXAM_TIME_LIMIT_SECS / 3600)}-hour soft timer (real
                     exam pace).
                   </p>
+                  {mockOverlapWarnings.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {mockOverlapWarnings.slice(0, 2).map((w) => (
+                        <p
+                          key={w.category}
+                          className={cn(
+                            "text-xs",
+                            w.overlapRisk === "high" ? "text-amber-700" : "text-muted-foreground"
+                          )}
+                        >
+                          {w.message}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   {practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS ? (
                     <p className="mt-2 text-xs text-amber-600">
                       Answer {MOCK_EXAM_MIN_PRACTICE_ANSWERS - practiceAnswerCount} more practice

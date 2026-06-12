@@ -21,7 +21,10 @@ export function SiteFooter({ className, showContact = false }: SiteFooterProps) 
             </p>
           )}
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap justify-center gap-4 md:justify-end">
+          <Link href="/quiz/config" className="hover:text-foreground">
+            Practice
+          </Link>
           <Link href="/terms" className="hover:text-foreground">
             Terms
           </Link>

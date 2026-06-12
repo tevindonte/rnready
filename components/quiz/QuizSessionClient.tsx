@@ -37,9 +37,17 @@ type QuizSessionClientProps = {
   };
 };
 
-/** Per-question rationale panel (TTS, tutor). Timed mode keeps rationales for session end. */
-function showsRationaleAfterAnswer(mode: QuizMode): boolean {
-  return mode === "review" || mode === "custom" || mode === "section" || mode === "adaptive";
+/** Per-question rationale panel (TTS, tutor). Timed/mock defer unless timed_show_rationale is set. */
+function showsRationaleAfterAnswer(mode: QuizMode, session: Session): boolean {
+  if (mode === "timed") return session.timed_show_rationale === true;
+  if (mode === "mock_exam") return false;
+  return (
+    mode === "review" ||
+    mode === "custom" ||
+    mode === "section" ||
+    mode === "adaptive" ||
+    mode === "missed_review"
+  );
 }
 
 function buildAnsweredMap(
@@ -116,7 +124,7 @@ export function QuizSessionClient({
   const question = current?.questions;
   const isSata = question?.is_ngn && question?.ngn_type === "sata";
   const mode = session.mode as QuizMode;
-  const perQuestionRationale = showsRationaleAfterAnswer(mode);
+  const perQuestionRationale = showsRationaleAfterAnswer(mode, session);
   const answeredCount = Object.keys(answered).length;
 
   const saveProgress = useCallback(
@@ -427,7 +435,7 @@ export function QuizSessionClient({
           sessionId={session.id}
           questionId={question.id}
           premiumFeatures={premiumFeatures}
-          onConfidence={mode === "review" ? submitConfidence : undefined}
+          onConfidence={perQuestionRationale ? submitConfidence : undefined}
           onNext={perQuestionRationale ? advanceOrFinish : undefined}
           isLast={currentIndex >= sessionQuestions.length - 1}
         />

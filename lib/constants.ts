@@ -33,7 +33,14 @@ export const NCLEX_WEIGHTS: Record<NclexCategory, number> = {
   "Psychosocial Integrity": 0.09,
 };
 
-export type QuizMode = "timed" | "review" | "section" | "adaptive" | "custom" | "mock_exam";
+export type QuizMode =
+  | "timed"
+  | "review"
+  | "section"
+  | "adaptive"
+  | "custom"
+  | "mock_exam"
+  | "missed_review";
 
 export const MOCK_EXAM_QUESTION_COUNT = 85;
 export const MOCK_EXAM_TIME_LIMIT_SECS = 5 * 60 * 60;
@@ -71,6 +78,13 @@ export const QUIZ_MODES: {
     icon: "target",
     requiresAuth: true,
   },
+  {
+    value: "missed_review",
+    label: "Missed review",
+    description: "Retry questions you got wrong in past sessions.",
+    icon: "book-open",
+    requiresAuth: true,
+  },
 ];
 
 export const QUESTION_COUNTS = [10, 25, 50] as const;
@@ -104,6 +118,7 @@ export type Session = {
   current_index?: number;
   status?: string;
   title?: string | null;
+  timed_show_rationale?: boolean;
   started_at: string;
   ended_at: string | null;
 };

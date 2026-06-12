@@ -22,17 +22,23 @@ export type CategoryScore = {
   isWeak: boolean;
 };
 
-export async function getCategoryScores(userId: string): Promise<CategoryScore[]> {
+export async function getCategoryScores(
+  userId: string,
+  options?: { includeModes?: string[]; excludeModes?: string[] }
+): Promise<CategoryScore[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("session_answers")
-    .select("is_correct, questions(category), sessions!inner(status)")
+    .select("is_correct, questions(category), sessions!inner(status, mode)")
     .eq("user_id", userId)
     .eq("sessions.status", "completed");
 
   const byCategory: Record<string, { correct: number; total: number }> = {};
 
   for (const row of data ?? []) {
+    const session = row.sessions as unknown as { status: string; mode: string };
+    if (options?.includeModes && !options.includeModes.includes(session.mode)) continue;
+    if (options?.excludeModes?.includes(session.mode)) continue;
     const category = (row.questions as unknown as { category: string } | null)?.category;
     if (!category) continue;
     if (!byCategory[category]) byCategory[category] = { correct: 0, total: 0 };
@@ -232,12 +238,17 @@ function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
-export async function computeReadinessScore(userId: string): Promise<{
+export async function computeReadinessScore(
+  userId: string,
+  options?: { excludeMockExam?: boolean }
+): Promise<{
   weightedScore: number;
   level: ReadinessLevel;
   categoryScores: CategoryScore[];
 }> {
-  const categoryScores = await getCategoryScores(userId);
+  const categoryScores = await getCategoryScores(userId, {
+    excludeModes: options?.excludeMockExam !== false ? ["mock_exam"] : undefined,
+  });
   let weightedScore = 0;
   let totalWeight = 0;
 
@@ -258,17 +269,54 @@ export async function computeReadinessScore(userId: string): Promise<{
   };
 }
 
-export async function getAvgTimeByCategory(userId: string): Promise<{ category: string; avgSecs: number }[]> {
+export async function computeMockExamReadiness(userId: string): Promise<{
+  weightedScore: number;
+  level: ReadinessLevel;
+  sessionCount: number;
+}> {
+  const supabase = await createClient();
+  const { data: sessions } = await supabase
+    .from("sessions")
+    .select("id, correct, total_questions")
+    .eq("user_id", userId)
+    .eq("mode", "mock_exam")
+    .eq("status", "completed");
+
+  const completed = sessions ?? [];
+  if (completed.length === 0) {
+    return { weightedScore: 0, level: "Unlikely", sessionCount: 0 };
+  }
+
+  let totalCorrect = 0;
+  let totalQuestions = 0;
+  for (const s of completed) {
+    totalCorrect += s.correct ?? 0;
+    totalQuestions += s.total_questions ?? 0;
+  }
+  const pct = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+  return {
+    weightedScore: pct,
+    level: getReadinessLevel(pct),
+    sessionCount: completed.length,
+  };
+}
+
+export async function getAvgTimeByCategory(
+  userId: string,
+  options?: { excludeModes?: string[] }
+): Promise<{ category: string; avgSecs: number }[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("session_answers")
-    .select("time_secs, questions(category), sessions!inner(status)")
+    .select("time_secs, questions(category), sessions!inner(status, mode)")
     .eq("user_id", userId)
     .eq("sessions.status", "completed");
 
   const byCategory: Record<string, { total: number; count: number }> = {};
 
   for (const row of data ?? []) {
+    const session = row.sessions as unknown as { mode: string };
+    if (options?.excludeModes?.includes(session.mode)) continue;
     const category = (row.questions as unknown as { category: string } | null)?.category;
     if (!category || row.time_secs == null) continue;
     if (!byCategory[category]) byCategory[category] = { total: 0, count: 0 };

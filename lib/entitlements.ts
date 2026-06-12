@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { hasPremiumAccess } from "@/lib/subscription-grace";
 
 /**
  * Cost-based tier model:
@@ -37,16 +38,25 @@ export type ProfileEntitlements = {
   };
 };
 
-export function isPaidSubscriber(status: SubscriptionStatus | null | undefined): boolean {
-  return status === "active";
+export function isPaidSubscriber(
+  status: SubscriptionStatus | null | undefined,
+  pastDueAt?: string | null
+): boolean {
+  return hasPremiumAccess(status, pastDueAt ?? null);
 }
 
-export function canUseAiTutor(status: SubscriptionStatus | null | undefined): boolean {
-  return isPaidSubscriber(status);
+export function canUseAiTutor(
+  status: SubscriptionStatus | null | undefined,
+  pastDueAt?: string | null
+): boolean {
+  return isPaidSubscriber(status, pastDueAt);
 }
 
-export function canUseTtsRationales(status: SubscriptionStatus | null | undefined): boolean {
-  return isPaidSubscriber(status);
+export function canUseTtsRationales(
+  status: SubscriptionStatus | null | undefined,
+  pastDueAt?: string | null
+): boolean {
+  return isPaidSubscriber(status, pastDueAt);
 }
 
 export async function getStudyGuideUsage(
@@ -84,9 +94,10 @@ export async function getStudyGuideUsage(
 
 export function evaluateStudyGuideLimit(
   status: SubscriptionStatus | null | undefined,
-  usage: { total: number; createdThisWeek: number; createdThisMonth: number }
+  usage: { total: number; createdThisWeek: number; createdThisMonth: number },
+  pastDueAt?: string | null
 ): { allowed: boolean; reason?: string } {
-  if (isPaidSubscriber(status)) {
+  if (isPaidSubscriber(status, pastDueAt)) {
     if (usage.createdThisMonth >= PAID_TIER_LIMITS.studyGuidesPerMonth) {
       return {
         allowed: false,
@@ -116,20 +127,22 @@ export function evaluateStudyGuideLimit(
 export async function canCreateStudyGuide(
   supabase: SupabaseClient,
   userId: string,
-  subscriptionStatus: SubscriptionStatus | null | undefined
+  subscriptionStatus: SubscriptionStatus | null | undefined,
+  pastDueAt?: string | null
 ): Promise<{ allowed: boolean; reason?: string }> {
   const usage = await getStudyGuideUsage(supabase, userId);
-  return evaluateStudyGuideLimit(subscriptionStatus, usage);
+  return evaluateStudyGuideLimit(subscriptionStatus, usage, pastDueAt);
 }
 
 export async function getProfileEntitlements(
   supabase: SupabaseClient,
   userId: string,
-  subscriptionStatus: SubscriptionStatus | null | undefined
+  subscriptionStatus: SubscriptionStatus | null | undefined,
+  pastDueAt?: string | null
 ): Promise<ProfileEntitlements> {
-  const isPaid = isPaidSubscriber(subscriptionStatus);
+  const isPaid = isPaidSubscriber(subscriptionStatus, pastDueAt);
   const usage = await getStudyGuideUsage(supabase, userId);
-  const guideCheck = evaluateStudyGuideLimit(subscriptionStatus, usage);
+  const guideCheck = evaluateStudyGuideLimit(subscriptionStatus, usage, pastDueAt);
 
   return {
     subscriptionStatus: subscriptionStatus ?? "free",

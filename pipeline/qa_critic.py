@@ -121,6 +121,11 @@ def main() -> None:
     parser.add_argument("--llm-all", action="store_true", help="Run LLM critic on every question (slow/costly)")
     parser.add_argument("--limit", type=int, default=0, help="Max questions to process (0 = all)")
     parser.add_argument(
+        "--sync-review",
+        action="store_true",
+        help="Set needs_review=true in Supabase for flagged questions",
+    )
+    parser.add_argument(
         "--checkpoint-every",
         type=int,
         default=100,
@@ -147,6 +152,7 @@ def main() -> None:
     letter_mismatch_count = 0
     fixed_subcategories = 0
     flagged: list[dict] = []
+    flagged_ids: set[str] = set()
     processed = 0
 
     for row in rows:
@@ -187,6 +193,7 @@ def main() -> None:
                             "subcategory": row.get("subcategory"),
                         }
                     )
+                    flagged_ids.add(qid)
                 suggested = llm_result.get("suggested_subcategory")
                 if (
                     args.fix_subcategories
@@ -216,6 +223,7 @@ def main() -> None:
                     "subcategory": row.get("subcategory"),
                 }
             )
+            flagged_ids.add(qid)
 
         if processed % args.checkpoint_every == 0 or processed == total:
             logger.info(
@@ -243,6 +251,13 @@ def main() -> None:
 
     out_path = PIPELINE_DIR / "qa_critic_report.json"
     out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+    synced = 0
+    if args.sync_review and flagged_ids:
+        for qid in flagged_ids:
+            db.table("questions").update({"needs_review": True}).eq("id", qid).execute()
+            synced += 1
+        logger.info("Synced needs_review=true for %d questions", synced)
 
     logger.info("Done. flagged=%d fixed_subcategories=%d report=%s", len(flagged), fixed_subcategories, out_path)
     logger.info("Top deterministic issues: %s", issue_counts.most_common(10))

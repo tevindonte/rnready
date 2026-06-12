@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoginClient } from "@/components/auth/LoginClient";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Sign In",
+  description: "Sign in to RNReady to track NCLEX readiness, mock exams, analytics, and study guides.",
+  path: "/login",
+});
 
 function LoginFallback() {
   return (

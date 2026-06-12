@@ -144,11 +144,12 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("subscription_status")
+    .select("subscription_status, subscription_past_due_at")
     .eq("id", user.id)
     .single();
 
   const subscriptionStatus = (profile?.subscription_status ?? "free") as SubscriptionStatus;
+  const pastDueAt = profile?.subscription_past_due_at ?? null;
   const contentType = request.headers.get("content-type") ?? "";
 
   try {
@@ -159,7 +160,12 @@ export async function POST(request: Request) {
 
       const save = form.get("save") !== "false";
       if (save) {
-        const guideCheck = await canCreateStudyGuide(supabase, user.id, subscriptionStatus);
+        const guideCheck = await canCreateStudyGuide(
+          supabase,
+          user.id,
+          subscriptionStatus,
+          pastDueAt
+        );
         if (!guideCheck.allowed) {
           return NextResponse.json(
             { error: guideCheck.reason, upgradeRequired: true },
@@ -202,7 +208,12 @@ export async function POST(request: Request) {
     const questionStyle = parseQuestionStyle(body.question_style);
 
     if (save) {
-      const guideCheck = await canCreateStudyGuide(supabase, user.id, subscriptionStatus);
+      const guideCheck = await canCreateStudyGuide(
+        supabase,
+        user.id,
+        subscriptionStatus,
+        pastDueAt
+      );
       if (!guideCheck.allowed) {
         return NextResponse.json(
           { error: guideCheck.reason, upgradeRequired: true },

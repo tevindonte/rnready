@@ -57,11 +57,16 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("subscription_status")
+    .select("subscription_status, subscription_past_due_at")
     .eq("id", user.id)
     .single();
 
-  if (!canUseAiTutor((profile?.subscription_status ?? "free") as SubscriptionStatus)) {
+  if (
+    !canUseAiTutor(
+      (profile?.subscription_status ?? "free") as SubscriptionStatus,
+      profile?.subscription_past_due_at
+    )
+  ) {
     return NextResponse.json(
       { error: "AI tutor is a Plus feature.", upgradeRequired: true },
       { status: 403 }

@@ -1,5 +1,20 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { QuizConfigClient } from "@/components/quiz/QuizConfigClient";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Start NCLEX Practice Session",
+  description:
+    "Configure your NCLEX RN practice session: review, timed, section, adaptive, missed review, or guest trial. Free to start.",
+  path: "/quiz/config",
+  keywords: [
+    "NCLEX practice session",
+    "NCLEX quiz config",
+    "free NCLEX questions",
+    "NCLEX timed practice",
+  ],
+});
 
 function ConfigFallback() {
   return (

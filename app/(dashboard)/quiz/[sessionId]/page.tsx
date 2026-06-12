@@ -45,14 +45,14 @@ export default async function QuizSessionPage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("subscription_status")
+    .select("subscription_status, subscription_past_due_at")
     .eq("id", user.id)
     .single();
 
   const subscriptionStatus = (profile?.subscription_status ?? "free") as SubscriptionStatus;
   const premiumFeatures = {
-    aiTutorChat: canUseAiTutor(subscriptionStatus),
-    ttsRationales: canUseTtsRationales(subscriptionStatus),
+    aiTutorChat: canUseAiTutor(subscriptionStatus, profile?.subscription_past_due_at),
+    ttsRationales: canUseTtsRationales(subscriptionStatus, profile?.subscription_past_due_at),
   };
 
   return (

@@ -15,6 +15,18 @@ describe("entitlements", () => {
     expect(isPaidSubscriber("cancelled")).toBe(false);
   });
 
+  it("grants Plus during past_due grace window", () => {
+    const recent = new Date().toISOString();
+    expect(isPaidSubscriber("past_due", recent)).toBe(true);
+    expect(canUseAiTutor("past_due", recent)).toBe(true);
+  });
+
+  it("denies Plus after past_due grace expires", () => {
+    const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    expect(isPaidSubscriber("past_due", old)).toBe(false);
+    expect(canUseTtsRationales("past_due", old)).toBe(false);
+  });
+
   it("gates per-use AI features to paid only", () => {
     expect(canUseAiTutor("active")).toBe(true);
     expect(canUseAiTutor("free")).toBe(false);

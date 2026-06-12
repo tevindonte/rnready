@@ -24,6 +24,7 @@ export function LogoMark({ className, size = "md", priority }: LogoMarkProps) {
       width={height}
       height={height}
       priority={priority}
+      sizes={`${height}px`}
       className={cn("h-auto w-auto shrink-0 object-contain", className)}
       style={{ height, width: "auto", maxHeight: height }}
     />
@@ -53,6 +54,7 @@ export function LogoFull({
       width={Math.round(height * 2.2)}
       height={height}
       priority={priority}
+      sizes={`${height}px`}
       className={cn("h-auto w-auto shrink-0 object-contain", className)}
       style={{ height, width: "auto", maxHeight: height }}
     />

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSupabaseServiceKey } from "@/lib/supabase/env";
 import { getStripe, resolveStripeCustomerId, resolveSubscriptionStatus } from "@/lib/stripe";
 import type { SubscriptionStatus } from "@/lib/entitlements";
+import { captureServerException } from "@/lib/monitoring";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -13,6 +14,8 @@ async function updateProfileSubscription(params: {
   subscriptionStatus: SubscriptionStatus;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+  /** Set grace clock on first past_due; clear when active again. */
+  touchPastDueAt?: boolean;
 }) {
   requireSupabaseServiceKey();
 
@@ -23,6 +26,19 @@ async function updateProfileSubscription(params: {
   if (params.stripeCustomerId) updates.stripe_customer_id = params.stripeCustomerId;
   if (params.stripeSubscriptionId !== undefined) {
     updates.stripe_subscription_id = params.stripeSubscriptionId;
+  }
+
+  if (params.touchPastDueAt === true) {
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("subscription_past_due_at")
+      .eq("id", params.userId)
+      .maybeSingle();
+    if (!existing?.subscription_past_due_at) {
+      updates.subscription_past_due_at = new Date().toISOString();
+    }
+  } else if (params.subscriptionStatus === "active") {
+    updates.subscription_past_due_at = null;
   }
 
   const { error } = await supabase.from("profiles").update(updates).eq("id", params.userId);
@@ -98,6 +114,29 @@ export async function POST(request: Request) {
         }
         break;
       }
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = resolveStripeCustomerId(invoice.customer);
+        if (!customerId) break;
+
+        const supabase = createAdminClient();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, stripe_subscription_id")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
+        if (!profile?.id) break;
+
+        await updateProfileSubscription({
+          userId: profile.id,
+          subscriptionStatus: "past_due",
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: profile.stripe_subscription_id,
+          touchPastDueAt: true,
+        });
+        break;
+      }
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
@@ -118,6 +157,7 @@ export async function POST(request: Request) {
             subscription.status === "canceled"
               ? null
               : subscription.id,
+          touchPastDueAt: subscriptionStatus === "past_due",
         });
         break;
       }
@@ -127,6 +167,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Webhook handler failed";
     console.error("[stripe webhook]", event.type, message);
+    await captureServerException(err, { eventType: event.type });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 

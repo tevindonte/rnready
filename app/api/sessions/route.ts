@@ -7,6 +7,7 @@ import {
   selectSectionQuestions,
   topUpQuestionIds,
 } from "@/lib/adaptive";
+import { selectMissedQuestionIds } from "@/lib/missed-questions";
 import type { QuizMode } from "@/lib/constants";
 import { MOCK_EXAM_MIN_PRACTICE_ANSWERS, MOCK_EXAM_QUESTION_COUNT } from "@/lib/constants";
 import { touchLastSessionAt } from "@/lib/entitlements";
@@ -51,6 +52,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "category_filter required for section mode" }, { status: 400 });
   }
 
+  const timedShowRationale = mode === "timed" && body.timed_show_rationale === true;
+
   let questionIds: string[] = [];
   const effectiveCount = mode === "mock_exam" ? MOCK_EXAM_QUESTION_COUNT : totalQuestions;
 
@@ -58,6 +61,14 @@ export async function POST(request: Request) {
     questionIds = await selectAdaptiveQuestions(user.id, effectiveCount);
   } else if (mode === "mock_exam") {
     questionIds = await selectMockExamQuestions(user.id);
+  } else if (mode === "missed_review") {
+    questionIds = await selectMissedQuestionIds(user.id, effectiveCount);
+    if (questionIds.length === 0) {
+      return NextResponse.json(
+        { error: "No missed questions to review yet. Complete a session first." },
+        { status: 400 }
+      );
+    }
   } else if (mode === "section") {
     questionIds = await selectSectionQuestions(
       categoryFilter!,
@@ -79,6 +90,12 @@ export async function POST(request: Request) {
     if (mode === "mock_exam") {
       return NextResponse.json(
         { error: "Not enough questions available to build a mock exam." },
+        { status: 400 }
+      );
+    }
+    if (mode === "missed_review") {
+      return NextResponse.json(
+        { error: "No missed questions available for review." },
         { status: 400 }
       );
     }
@@ -121,6 +138,7 @@ export async function POST(request: Request) {
       subcategory_filter: subcategoryFilter,
       total_questions: Math.min(effectiveCount, questionIds.length),
       title: title ?? (mode === "mock_exam" ? "NCLEX Mock Exam" : null),
+      timed_show_rationale: timedShowRationale,
       status: "in_progress",
       current_index: 0,
     })

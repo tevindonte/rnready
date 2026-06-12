@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import { LegalShell } from "@/components/legal/LegalShell";
 import { CONTACT_EMAIL } from "@/lib/site-meta";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Privacy Policy",
+  description:
+    "How RNReady collects, uses, and protects your NCLEX prep data, quiz sessions, and account information.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

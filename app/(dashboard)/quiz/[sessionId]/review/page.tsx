@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SessionReviewClient } from "@/components/quiz/SessionReviewClient";
 import { computeSessionScore } from "@/lib/session-score";
+import { canUseAiTutor, canUseTtsRationales, type SubscriptionStatus } from "@/lib/entitlements";
 
 export default async function SessionReviewPage({
   params,
@@ -25,6 +26,18 @@ export default async function SessionReviewPage({
   if (session.status !== "completed" || !session.ended_at) {
     redirect(`/quiz/${params.sessionId}`);
   }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("subscription_status, subscription_past_due_at")
+    .eq("id", user.id)
+    .single();
+
+  const subscriptionStatus = (profile?.subscription_status ?? "free") as SubscriptionStatus;
+  const premiumFeatures = {
+    aiTutorChat: canUseAiTutor(subscriptionStatus, profile?.subscription_past_due_at),
+    ttsRationales: canUseTtsRationales(subscriptionStatus, profile?.subscription_past_due_at),
+  };
 
   const { data: sq } = await supabase
     .from("session_questions")
@@ -77,6 +90,7 @@ export default async function SessionReviewPage({
       total={score.total}
       durationSecs={session.duration_secs}
       questions={questions}
+      premiumFeatures={premiumFeatures}
     />
   );
 }

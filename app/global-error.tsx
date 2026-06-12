@@ -1,15 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Inter } from "next/font/google";
-import { LogoFull } from "@/components/LogoMark";
-import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["400", "500", "600"],
-});
+import { captureClientException } from "@/lib/monitoring";
 
 export default function GlobalError({
   error,
@@ -19,38 +11,24 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    captureClientException(error, { digest: error.digest });
   }, [error]);
 
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-          <header className="border-b border-slate-200 bg-white px-6 py-4">
-            <LogoFull href="/" height={32} />
-          </header>
-          <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-            <p className="text-sm font-medium uppercase tracking-widest text-[#6366F1]">Error</p>
-            <h1 className="mt-3 text-3xl font-semibold text-[#0F1729]">Something went wrong</h1>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500">
-              A critical error occurred. Refresh the page or try again in a moment.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={reset}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-[#6366F1] px-4 text-sm font-medium text-white hover:bg-[#5558E3]"
-              >
-                Try again
-              </button>
-              <a
-                href="/"
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-[#0F1729] hover:bg-slate-50"
-              >
-                Back to home
-              </a>
-            </div>
-          </main>
+      <body className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-semibold">Something went wrong</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            An unexpected error occurred. Try again or return home.
+          </p>
+          <button
+            type="button"
+            className="mt-6 rounded-lg bg-indigo px-4 py-2 text-sm font-medium text-white"
+            onClick={() => reset()}
+          >
+            Try again
+          </button>
         </div>
       </body>
     </html>

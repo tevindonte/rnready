@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { StatusPageShell } from "@/components/StatusPageShell";
 import { Button } from "@/components/ui/button";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Page Not Found",
+  description: "The page you requested could not be found on RNReady.",
+  noIndex: true,
+});
 
 export default function NotFound() {
   return (
