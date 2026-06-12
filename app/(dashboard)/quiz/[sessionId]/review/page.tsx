@@ -22,6 +22,9 @@ export default async function SessionReviewPage({
     .single();
 
   if (!session) redirect("/quiz/config");
+  if (session.status !== "completed" || !session.ended_at) {
+    redirect(`/quiz/${params.sessionId}`);
+  }
 
   const { data: sq } = await supabase
     .from("session_questions")

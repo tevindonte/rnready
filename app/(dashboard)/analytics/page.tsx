@@ -35,6 +35,7 @@ export default async function AnalyticsPage() {
     .from("sessions")
     .select("*")
     .eq("user_id", user.id)
+    .eq("status", "completed")
     .not("ended_at", "is", null)
     .order("ended_at", { ascending: false });
 

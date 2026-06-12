@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Flag } from "lucide-react";
+import { Flag, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/LogoMark";
 import { QuestionNavigator, type QuestionNavStatus } from "@/components/quiz/QuestionNavigator";
@@ -10,7 +10,7 @@ import { ScratchPad } from "@/components/quiz/ScratchPad";
 import { Calculator as CalculatorTool } from "@/components/quiz/Calculator";
 import { LabValues } from "@/components/quiz/LabValues";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { SessionExitDialog } from "@/components/quiz/SessionExitDialog";
 import { Timer } from "@/components/quiz/Timer";
 import type { QuizMode } from "@/lib/constants";
 
@@ -18,12 +18,14 @@ type QuizSessionShellProps = {
   mode: QuizMode;
   currentIndex: number;
   totalQuestions: number;
+  answeredCount: number;
   getNavStatus: (index: number) => QuestionNavStatus;
   onNavigate: (index: number) => void;
   flagged: Set<string>;
   currentQuestionId: string;
   onToggleFlag: () => void;
-  onEndSession: () => void;
+  onSaveForLater: () => void;
+  onFinishSession: () => void;
   onTimeUp?: () => void;
   onTick?: (secs: number) => void;
   scratchPad: string;
@@ -40,12 +42,14 @@ export function QuizSessionShell({
   mode,
   currentIndex,
   totalQuestions,
+  answeredCount,
   getNavStatus,
   onNavigate,
   flagged,
   currentQuestionId,
   onToggleFlag,
-  onEndSession,
+  onSaveForLater,
+  onFinishSession,
   onTimeUp,
   onTick,
   scratchPad,
@@ -57,7 +61,7 @@ export function QuizSessionShell({
   forwardOnly = true,
 }: QuizSessionShellProps) {
   const isFlagged = flagged.has(currentQuestionId);
-  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
   const navReadOnly = forwardOnly || showRationale;
 
   return (
@@ -119,10 +123,11 @@ export function QuizSessionShell({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setEndConfirmOpen(true)}
-                className="min-h-[44px] min-w-[44px] text-muted-foreground"
+                onClick={() => setExitOpen(true)}
+                className="min-h-[44px] text-muted-foreground"
               >
-                End
+                <Pause className="mr-1.5 h-4 w-4" strokeWidth={1.5} />
+                Pause
               </Button>
             </div>
 
@@ -159,15 +164,12 @@ export function QuizSessionShell({
         </div>
       </div>
 
-      <ConfirmDialog
-        open={endConfirmOpen}
-        onOpenChange={setEndConfirmOpen}
-        title="End this session?"
-        description="Your progress will be saved. You can review your answers on the session summary."
-        confirmLabel="End session"
-        cancelLabel="Keep going"
-        destructive
-        onConfirm={onEndSession}
+      <SessionExitDialog
+        open={exitOpen}
+        onOpenChange={setExitOpen}
+        answeredCount={answeredCount}
+        onSaveForLater={onSaveForLater}
+        onFinishSession={onFinishSession}
       />
     </>
   );

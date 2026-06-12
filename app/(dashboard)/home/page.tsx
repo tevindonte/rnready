@@ -9,6 +9,7 @@ import { LocalGreeting } from "@/components/LocalGreeting";
 import { computeReadinessScore } from "@/lib/adaptive";
 import { computeStudyStreak } from "@/lib/streak";
 import { attachSessionScores } from "@/lib/session-score";
+import { getSessionDisplayName } from "@/lib/session-display";
 import { AlertTriangle, ArrowRight, BarChart3, BookOpen, Calendar, Flame, Play } from "lucide-react";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ export default async function HomePage() {
     .from("sessions")
     .select("ended_at")
     .eq("user_id", user.id)
+    .eq("status", "completed")
     .not("ended_at", "is", null)
     .gte("ended_at", weekAgo.toISOString());
 
@@ -44,37 +46,40 @@ export default async function HomePage() {
     .from("sessions")
     .select("ended_at")
     .eq("user_id", user.id)
+    .eq("status", "completed")
     .not("ended_at", "is", null);
 
   const { data: recentSessionsRaw } = await supabase
     .from("sessions")
     .select("*")
     .eq("user_id", user.id)
+    .eq("status", "completed")
     .not("ended_at", "is", null)
     .order("ended_at", { ascending: false })
     .limit(3);
 
   const recentSessions = await attachSessionScores(supabase, recentSessionsRaw ?? []);
 
-  const { data: inProgressSession } = await supabase
+  const { data: pausedSessions } = await supabase
     .from("sessions")
     .select("*")
     .eq("user_id", user.id)
+    .in("status", ["in_progress", "paused"])
     .is("ended_at", null)
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(5);
 
-  const { data: allAnswers } = await supabase
+  const { count: questionsAnswered } = await supabase
     .from("session_answers")
-    .select("id")
-    .eq("user_id", user.id);
+    .select("*, sessions!inner(status)", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("sessions.status", "completed");
 
   const { weightedScore, level, categoryScores } = await computeReadinessScore(user.id);
 
   const name = profile?.name || user.email?.split("@")[0] || "Student";
   const sessionsThisWeek = weekSessions?.length ?? 0;
-  const questionsAnswered = allAnswers?.length ?? 0;
+  const questionsAnsweredCount = questionsAnswered ?? 0;
   const hasSessions = recentSessions.length > 0;
   const studyStreak = computeStudyStreak(
     (allCompletedSessions ?? []).map((s) => s.ended_at)
@@ -127,27 +132,34 @@ export default async function HomePage() {
         )}
       </div>
 
-      {inProgressSession && (
-        <Card className="border-indigo-200 bg-indigo-50/40">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
-            <div className="flex items-start gap-3">
-              <Play className="mt-0.5 h-5 w-5 shrink-0 text-indigo" strokeWidth={1.5} />
-              <div>
-                <p className="text-sm font-medium text-foreground">Continue where you left off</p>
-                <p className="mt-0.5 text-sm capitalize text-muted-foreground">
-                  {formatMode(inProgressSession.mode)} session ·{" "}
-                  {inProgressSession.correct ?? 0}/{inProgressSession.total_questions ?? "?"} answered
-                </p>
-              </div>
-            </div>
-            <Button asChild>
-              <Link href={`/quiz/${inProgressSession.id}`}>
-                Resume session
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+      {pausedSessions && pausedSessions.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium text-muted-foreground">Saved sessions</h2>
+          {pausedSessions.map((session) => (
+            <Card key={session.id} className="border-indigo-200 bg-indigo-50/40">
+              <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+                <div className="flex items-start gap-3">
+                  <Play className="mt-0.5 h-5 w-5 shrink-0 text-indigo" strokeWidth={1.5} />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {getSessionDisplayName(session)}
+                    </p>
+                    <p className="mt-0.5 text-sm capitalize text-muted-foreground">
+                      {formatMode(session.mode)} · Question{" "}
+                      {(session.current_index ?? 0) + 1} of {session.total_questions ?? "?"}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild>
+                  <Link href={`/quiz/${session.id}`}>
+                    Resume
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
       {!profile?.exam_date && hasSessions && (
@@ -169,7 +181,7 @@ export default async function HomePage() {
         </Card>
       )}
 
-      {questionsAnswered > 0 && (
+      {questionsAnsweredCount > 0 && (
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
             <div>
@@ -202,7 +214,7 @@ export default async function HomePage() {
         {[
           { label: "Sessions this week", value: sessionsThisWeek },
           { label: "Avg score", value: hasSessions ? `${avgScore}%` : "—" },
-          { label: "Questions answered", value: questionsAnswered },
+          { label: "Questions answered", value: questionsAnsweredCount },
         ].map((stat) => (
           <Card key={stat.label}>
             <CardContent className="p-5">
@@ -258,8 +270,8 @@ export default async function HomePage() {
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium capitalize text-foreground">
-                        {formatMode(session.mode)}
+                      <span className="text-sm font-medium text-foreground">
+                        {session.title?.trim() || formatMode(session.mode)}
                       </span>
                       <span className="text-sm text-muted-foreground">
                         <LocalDateTime value={session.ended_at!} />
@@ -277,7 +289,7 @@ export default async function HomePage() {
           </div>
         </div>
       ) : (
-        !inProgressSession && (
+        !pausedSessions?.length && (
           <EmptyState
             icon={BookOpen}
             title="No sessions yet"

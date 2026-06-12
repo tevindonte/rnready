@@ -106,6 +106,7 @@ export function QuizSessionClient({
   const question = current?.questions;
   const isSata = question?.is_ngn && question?.ngn_type === "sata";
   const mode = session.mode as QuizMode;
+  const answeredCount = Object.keys(answered).length;
 
   const saveProgress = useCallback(
     async (index: number) => {
@@ -272,6 +273,20 @@ export function QuizSessionClient({
     });
   }
 
+  async function pauseSession(redirectTo?: string) {
+    await fetch("/api/sessions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        session_id: session.id,
+        current_index: currentIndex,
+        duration_secs: elapsedSecs.current,
+        status: "paused",
+      }),
+    });
+    if (redirectTo) router.push(redirectTo);
+  }
+
   async function finishSession() {
     await fetch("/api/sessions", {
       method: "PATCH",
@@ -326,13 +341,15 @@ export function QuizSessionClient({
         mode={mode}
         currentIndex={currentIndex}
         totalQuestions={sessionQuestions.length}
+        answeredCount={answeredCount}
         getNavStatus={getNavStatus}
         onNavigate={() => {}}
         forwardOnly
         flagged={flagged}
         currentQuestionId={current.question_id}
         onToggleFlag={toggleFlag}
-        onEndSession={() => finishSession()}
+        onSaveForLater={() => pauseSession("/home")}
+        onFinishSession={() => finishSession()}
         onTimeUp={() => submitAnswer(selected.length ? undefined : "")}
         onTick={(s) => {
           elapsedSecs.current = s;
@@ -400,13 +417,12 @@ export function QuizSessionClient({
         onOpenChange={(open) => {
           if (!open) stay();
         }}
-        title="Leave quiz?"
-        description="Your progress is saved — you can resume later."
-        confirmLabel="Leave"
+        title="Save and leave?"
+        description="Your progress will be saved for later. Paused sessions don't affect your analytics until you finish & review."
+        confirmLabel="Save for later"
         cancelLabel="Stay"
         onConfirm={() => {
-          saveProgress(currentIndex);
-          leave();
+          void pauseSession().then(() => leave());
         }}
       />
     </>

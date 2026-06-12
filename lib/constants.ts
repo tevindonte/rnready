@@ -99,6 +99,7 @@ export type Session = {
   duration_secs: number;
   current_index?: number;
   status?: string;
+  title?: string | null;
   started_at: string;
   ended_at: string | null;
 };

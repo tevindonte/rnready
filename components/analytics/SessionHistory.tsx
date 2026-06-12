@@ -10,15 +10,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { LocalDateTime } from "@/components/LocalDateTime";
+import { getSessionDisplayName } from "@/lib/session-display";
 
 type SessionRow = {
   id: string;
   mode: string;
+  title?: string | null;
+  started_at: string;
   correct: number;
   total: number;
   percent: number;
   ended_at: string | null;
-  started_at: string;
 };
 
 export function SessionHistory({ sessions }: { sessions: SessionRow[] }) {
@@ -31,9 +33,9 @@ export function SessionHistory({ sessions }: { sessions: SessionRow[] }) {
       <TableHeader>
         <TableRow>
           <TableHead>Date</TableHead>
-          <TableHead>Mode</TableHead>
+          <TableHead>Session</TableHead>
           <TableHead>Score</TableHead>
-          <TableHead>Questions</TableHead>
+          <TableHead>Result</TableHead>
           <TableHead></TableHead>
         </TableRow>
       </TableHeader>
@@ -43,7 +45,10 @@ export function SessionHistory({ sessions }: { sessions: SessionRow[] }) {
             <TableCell>
               <LocalDateTime value={s.ended_at ?? s.started_at} variant="short" />
             </TableCell>
-            <TableCell className="capitalize text-muted-foreground">{s.mode}</TableCell>
+            <TableCell>
+              <p className="text-sm font-medium text-foreground">{getSessionDisplayName(s)}</p>
+              <p className="text-xs capitalize text-muted-foreground">{s.mode}</p>
+            </TableCell>
             <TableCell>{s.percent}%</TableCell>
             <TableCell>
               {s.correct}/{s.total}

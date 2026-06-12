@@ -56,6 +56,7 @@ export function QuizConfigClient() {
   const [showGate, setShowGate] = useState(false);
   const [remainingFree, setRemainingFree] = useState(GUEST_MAX_QUESTIONS);
   const [bankTotal, setBankTotal] = useState<number | null>(null);
+  const [sessionTitle, setSessionTitle] = useState("");
 
   useEffect(() => {
     router.prefetch("/quiz/guest");
@@ -159,6 +160,7 @@ export function QuizConfigClient() {
         category_filter: mode === "section" ? sectionCategory : null,
         subcategory_filter: mode === "section" ? subcategories : null,
         total_questions: questionCount,
+        title: sessionTitle.trim() || null,
       }),
     });
     const data = await res.json();
@@ -402,6 +404,21 @@ export function QuizConfigClient() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {!isGuest && (
+            <div>
+              <p className="mb-3 text-sm font-medium text-foreground">Session name (optional)</p>
+              <Input
+                value={sessionTitle}
+                onChange={(e) => setSessionTitle(e.target.value)}
+                placeholder="e.g. Pharmacology review"
+                maxLength={80}
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Helps you find paused sessions on your dashboard
+              </p>
             </div>
           )}
 

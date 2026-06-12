@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { QuestionBankSummary } from "@/components/QuestionBankSummary";
 
 export default function SettingsPage() {
@@ -19,6 +20,9 @@ export default function SettingsPage() {
   const [bankTotal, setBankTotal] = useState(0);
   const [customBankTotal, setCustomBankTotal] = useState(0);
   const [emailOptOut, setEmailOptOut] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearMessage, setClearMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -61,6 +65,24 @@ export default function SettingsPage() {
       return;
     }
     setSaved(true);
+    router.refresh();
+  }
+
+  async function handleClearAnalytics() {
+    setClearing(true);
+    setClearMessage(null);
+    const res = await fetch("/api/analytics/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: true }),
+    });
+    setClearing(false);
+    if (!res.ok) {
+      const data = await res.json();
+      setClearMessage(data.error || "Failed to clear analytics");
+      return;
+    }
+    setClearMessage("Analytics cleared. Your profile settings were kept.");
     router.refresh();
   }
 
@@ -133,6 +155,37 @@ export default function SettingsPage() {
       {bankTotal > 0 && (
         <QuestionBankSummary sharedTotal={bankTotal} customTotal={customBankTotal} />
       )}
+
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <div>
+            <h2 className="text-base font-medium text-foreground">Analytics data</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Delete all quiz sessions, scores, and readiness history to start fresh. Paused
+              sessions are removed too. Your account, profile, and study guides are kept.
+            </p>
+          </div>
+          {clearMessage && (
+            <p className={`text-sm ${clearMessage.includes("cleared") ? "text-emerald" : "text-red-500"}`}>
+              {clearMessage}
+            </p>
+          )}
+          <Button variant="destructive" onClick={() => setClearOpen(true)} disabled={clearing}>
+            {clearing ? "Clearing..." : "Clear analytics & start fresh"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <ConfirmDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        title="Clear all analytics?"
+        description="This permanently deletes every quiz session and score. You can't undo this."
+        confirmLabel="Clear everything"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={() => void handleClearAnalytics()}
+      />
     </div>
   );
 }

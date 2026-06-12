@@ -22,6 +22,8 @@ export async function POST(request: Request) {
   const categoryFilter = body.category_filter as string | null;
   const subcategoryFilter = body.subcategory_filter as string[] | null;
   const totalQuestions = body.total_questions as number;
+  const title =
+    typeof body.title === "string" && body.title.trim() ? body.title.trim().slice(0, 80) : null;
 
   if (!mode || !totalQuestions) {
     return NextResponse.json({ error: "mode and total_questions required" }, { status: 400 });
@@ -76,6 +78,7 @@ export async function POST(request: Request) {
       category_filter: categoryFilter,
       subcategory_filter: subcategoryFilter,
       total_questions: Math.min(totalQuestions, questionIds.length),
+      title,
       status: "in_progress",
       current_index: 0,
     })
@@ -119,20 +122,29 @@ export async function PATCH(request: Request) {
     ended_at,
     current_index,
     status,
+    title,
   } = body;
 
   const updates: Record<string, unknown> = {};
   if (duration_secs !== undefined) updates.duration_secs = duration_secs;
-  if (ended_at !== undefined) updates.ended_at = ended_at;
   if (current_index !== undefined) updates.current_index = current_index;
-  if (status !== undefined) updates.status = status;
+  if (title !== undefined) {
+    updates.title =
+      typeof title === "string" && title.trim() ? title.trim().slice(0, 80) : null;
+  }
 
-  if (ended_at !== undefined || status === "completed") {
+  const isCompleting = ended_at !== undefined || status === "completed";
+
+  if (isCompleting) {
+    updates.status = "completed";
+    updates.ended_at =
+      typeof ended_at === "string" ? ended_at : new Date().toISOString();
     const score = await recalculateSessionScore(supabase, session_id);
     updates.correct = score.correct;
     updates.total_questions = score.total;
-  } else if (correct !== undefined) {
-    updates.correct = correct;
+  } else {
+    if (status !== undefined) updates.status = status;
+    if (correct !== undefined) updates.correct = correct;
   }
 
   const { error } = await supabase

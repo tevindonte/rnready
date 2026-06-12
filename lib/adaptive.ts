@@ -18,8 +18,9 @@ export async function getCategoryScores(userId: string): Promise<CategoryScore[]
   const supabase = await createClient();
   const { data } = await supabase
     .from("session_answers")
-    .select("is_correct, questions(category)")
-    .eq("user_id", userId);
+    .select("is_correct, questions(category), sessions!inner(status)")
+    .eq("user_id", userId)
+    .eq("sessions.status", "completed");
 
   const byCategory: Record<string, { correct: number; total: number }> = {};
 
@@ -55,8 +56,9 @@ export async function getSeenQuestionIds(userId: string): Promise<string[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("session_answers")
-    .select("question_id")
-    .eq("user_id", userId);
+    .select("question_id, sessions!inner(status)")
+    .eq("user_id", userId)
+    .eq("sessions.status", "completed");
   return Array.from(new Set((data ?? []).map((r) => r.question_id)));
 }
 
@@ -222,8 +224,9 @@ export async function getAvgTimeByCategory(userId: string): Promise<{ category: 
   const supabase = await createClient();
   const { data } = await supabase
     .from("session_answers")
-    .select("time_secs, questions(category)")
-    .eq("user_id", userId);
+    .select("time_secs, questions(category), sessions!inner(status)")
+    .eq("user_id", userId)
+    .eq("sessions.status", "completed");
 
   const byCategory: Record<string, { total: number; count: number }> = {};
 
