@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { QuestionBankSummary } from "@/components/QuestionBankSummary";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
+import { CONTACT_EMAIL, copyrightNotice } from "@/lib/site-meta";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -189,6 +191,32 @@ export default function SettingsPage() {
         destructive
         onConfirm={() => void handleClearAnalytics()}
       />
+
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <div>
+            <h2 className="text-base font-medium text-foreground">Contact & support</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Bug reports, billing questions, privacy requests, or general feedback:
+            </p>
+          </div>
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="inline-block text-sm font-medium text-indigo hover:underline"
+          >
+            {CONTACT_EMAIL}
+          </a>
+          <div className="flex gap-4 text-sm">
+            <Link href="/terms" className="text-muted-foreground hover:text-foreground">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
+              Privacy Policy
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground">{copyrightNotice()}</p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

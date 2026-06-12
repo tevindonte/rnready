@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogoMark } from "@/components/LogoMark";
+import { LogoFull } from "@/components/LogoMark";
 import {
   canStartGuestSession,
   startGuestSession,
@@ -88,10 +88,7 @@ export default function SharedStudyGuidePage({ params }: { params: { shareCode: 
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col px-6 py-12">
-      <Link href="/" className="mb-8 flex items-center gap-2">
-        <LogoMark size="sm" />
-        <span className="text-sm font-medium text-muted-foreground">RNReady</span>
-      </Link>
+      <LogoFull href="/" height={28} variant="compact" className="mb-8" />
 
       {loading ? (
         <div className="h-40 animate-pulse rounded-xl bg-slate-100" />

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Inter } from "next/font/google";
+import { LogoFull } from "@/components/LogoMark";
 import "./globals.css";
 
 const inter = Inter({
@@ -26,12 +27,7 @@ export default function GlobalError({
       <body className={`${inter.variable} font-sans antialiased`}>
         <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
           <header className="border-b border-slate-200 bg-white px-6 py-4">
-            <div className="inline-flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6366F1] text-sm font-semibold text-white">
-                R
-              </div>
-              <span className="text-base font-semibold text-[#0F1729]">RNReady</span>
-            </div>
+            <LogoFull href="/" height={32} />
           </header>
           <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
             <p className="text-sm font-medium uppercase tracking-widest text-[#6366F1]">Error</p>

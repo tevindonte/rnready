@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Brain, LineChart, Target } from "lucide-react";
 import { LogoFull } from "@/components/LogoMark";
+import { copyrightNotice } from "@/lib/site-meta";
 
 const highlights = [
   { icon: Brain, text: "AI explanations after every answer" },
@@ -17,7 +18,7 @@ export function AuthShell({ children }: AuthShellProps) {
     <div className="flex min-h-screen">
       <aside className="relative hidden w-1/2 flex-col justify-between bg-navy p-12 lg:flex">
         <Link href="/">
-          <LogoFull />
+          <LogoFull height={44} />
         </Link>
 
         <div>
@@ -42,17 +43,12 @@ export function AuthShell({ children }: AuthShellProps) {
           </ul>
         </div>
 
-        <p className="text-xs text-slate-500">RNReady · NCLEX-RN Prep</p>
+        <p className="text-xs text-slate-500">{copyrightNotice()}</p>
       </aside>
 
       <main className="flex flex-1 flex-col items-center justify-center bg-background p-6">
-        <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo text-sm font-semibold text-white">
-              R
-            </span>
-            <span className="text-lg font-semibold text-foreground">RNReady</span>
-          </Link>
+        <div className="mb-8 lg:hidden">
+          <LogoFull href="/" height={36} />
         </div>
         <div className="w-full max-w-md">{children}</div>
       </main>

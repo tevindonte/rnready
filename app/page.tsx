@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Brain, BookOpenCheck, LineChart, SlidersHorizontal, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LogoMark } from "@/components/LogoMark";
+import { LogoFull } from "@/components/LogoMark";
+import { SiteFooter } from "@/components/SiteFooter";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatQuestionCount, getSharedQuestionBankStats } from "@/lib/question-bank";
 
@@ -52,10 +53,7 @@ export default async function LandingPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-white">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-2.5">
-            <LogoMark size="sm" />
-            <span className="text-lg font-semibold text-foreground">RNReady</span>
-          </div>
+          <LogoFull href="/" height={36} priority />
           <Button variant="ghost" asChild>
             <Link href="/login">Sign in</Link>
           </Button>
@@ -183,16 +181,8 @@ export default async function LandingPage() {
         </section>
 
         <footer className="border-t border-border">
-          <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-muted-foreground md:flex-row">
-            <p>© {new Date().getFullYear()} RNReady</p>
-            <div className="flex gap-4">
-              <Link href="/terms" className="hover:text-foreground">
-                Terms
-              </Link>
-              <Link href="/privacy" className="hover:text-foreground">
-                Privacy
-              </Link>
-            </div>
+          <div className="mx-auto max-w-5xl px-6 py-8">
+            <SiteFooter showContact />
           </div>
         </footer>
       </main>

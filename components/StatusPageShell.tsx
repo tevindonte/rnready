@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/LogoMark";
+import { LogoFull } from "@/components/LogoMark";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -21,10 +21,7 @@ export function StatusPageShell({
   return (
     <div className={cn("flex min-h-screen flex-col bg-background", className)}>
       <header className="border-b border-border bg-white px-6 py-4">
-        <Link href="/" className="inline-flex items-center gap-2.5">
-          <LogoMark size="sm" />
-          <span className="text-base font-semibold text-foreground">RNReady</span>
-        </Link>
+        <LogoFull href="/" height={32} />
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">

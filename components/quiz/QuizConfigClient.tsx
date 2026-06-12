@@ -28,7 +28,7 @@ import {
   type GuestSession,
 } from "@/lib/guest";
 import { FreemiumGateModal } from "@/components/FreemiumGateModal";
-import { LogoMark } from "@/components/LogoMark";
+import { LogoFull } from "@/components/LogoMark";
 import { QuestionBankSummary } from "@/components/QuestionBankSummary";
 
 const MODE_ICONS = {
@@ -271,10 +271,7 @@ export function QuizConfigClient() {
     <>
       <div className="mx-auto min-h-screen w-full max-w-[640px] px-4 py-8 sm:max-w-xl sm:px-6 md:max-w-2xl md:py-12 lg:max-w-[640px]">
         <div className="mb-8 flex items-center justify-between">
-          <Link href={isGuest ? "/" : "/home"} className="flex items-center gap-2">
-            <LogoMark size="sm" />
-            <span className="text-sm font-medium text-muted-foreground">RNReady</span>
-          </Link>
+          <LogoFull href={isGuest ? "/" : "/home"} height={28} variant="compact" />
           {isGuest && (
             <Button variant="ghost" size="sm" asChild>
               <Link href="/login">Sign in</Link>

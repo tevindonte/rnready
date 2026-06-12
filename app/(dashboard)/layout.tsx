@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
-import { LogoFull, LogoMark } from "@/components/LogoMark";
+import { LogoFull } from "@/components/LogoMark";
 import { GuestBanner } from "@/components/GuestBanner";
 import { useEffect, useState } from "react";
 
@@ -96,10 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-white lg:hidden">
         <div className="flex h-14 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size="sm" />
-            <span className="font-semibold text-foreground">RNReady</span>
-          </div>
+          <LogoFull href="/home" height={32} />
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -136,9 +133,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex">
         <aside className="hidden w-60 shrink-0 bg-navy lg:block">
           <div className="sticky top-0 flex h-screen flex-col p-5">
-            <div className="mb-8">
-              <LogoFull />
-              <p className="mt-1 pl-10 text-xs text-slate-500">NCLEX Prep</p>
+            <div className="mb-8 px-1">
+              <LogoFull href="/home" height={40} />
             </div>
             <NavLinks isGuest={isGuest} />
             <div className="mt-auto space-y-2">

@@ -1,4 +1,5 @@
 import { LegalShell } from "@/components/legal/LegalShell";
+import { CONTACT_EMAIL } from "@/lib/site-meta";
 
 export default function PrivacyPage() {
   return (
@@ -30,7 +31,13 @@ export default function PrivacyPage() {
         contacting support.
       </p>
       <h2 className="text-base font-semibold text-foreground">Contact</h2>
-      <p>Privacy questions? Reach out through your usual RNReady support channel.</p>
+      <p>
+        Privacy questions or data deletion requests? Email{" "}
+        <a href={`mailto:${CONTACT_EMAIL}`} className="text-indigo hover:underline">
+          {CONTACT_EMAIL}
+        </a>
+        .
+      </p>
     </LegalShell>
   );
 }

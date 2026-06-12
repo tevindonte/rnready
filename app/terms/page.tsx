@@ -1,4 +1,5 @@
 import { LegalShell } from "@/components/legal/LegalShell";
+import { CONTACT_EMAIL } from "@/lib/site-meta";
 
 export default function TermsPage() {
   return (
@@ -26,7 +27,11 @@ export default function TermsPage() {
       </p>
       <h2 className="text-base font-semibold text-foreground">Contact</h2>
       <p>
-        Questions about these terms? Contact the RNReady team through your usual support channel.
+        Questions about these terms? Email{" "}
+        <a href={`mailto:${CONTACT_EMAIL}`} className="text-indigo hover:underline">
+          {CONTACT_EMAIL}
+        </a>
+        .
       </p>
     </LegalShell>
   );

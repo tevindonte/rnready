@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google";
 import type { Metadata } from "next";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from "@/lib/site-meta";
 import "./globals.css";
 
 const inter = Inter({
@@ -9,8 +10,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "RNReady | NCLEX Prep",
-  description: "AI-assisted NCLEX preparation for nursing students",
+  title: `${SITE_NAME} | NCLEX Prep`,
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  icons: {
+    icon: [{ url: "/favicon.png", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+  },
+  openGraph: {
+    title: `${SITE_NAME} | ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    siteName: SITE_NAME,
+  },
 };
 
 export default function RootLayout({
