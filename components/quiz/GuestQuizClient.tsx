@@ -187,7 +187,13 @@ export function GuestQuizClient() {
     setCurrentIndex((i) => i + 1);
   }
 
-  function handleEndSession() {
+  function handleSaveForLater() {
+    if (!session) return;
+    saveGuestSession(session);
+    router.push("/quiz/config");
+  }
+
+  function handleFinishSession() {
     if (!session) return;
     const answeredCount = Object.keys(session.answers).length;
     if (answeredCount === 0) {
@@ -240,13 +246,15 @@ export function GuestQuizClient() {
         mode="review"
         currentIndex={currentIndex}
         totalQuestions={session.totalQuestions}
+        answeredCount={Object.keys(session.answers).length}
         getNavStatus={getNavStatus}
         onNavigate={() => {}}
         forwardOnly
         flagged={flagged}
         currentQuestionId={currentQ.id}
         onToggleFlag={toggleFlag}
-        onEndSession={handleEndSession}
+        onSaveForLater={handleSaveForLater}
+        onFinishSession={handleFinishSession}
         onTick={(s) => {
           elapsedSecs.current = s;
         }}
