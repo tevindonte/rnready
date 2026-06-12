@@ -38,7 +38,7 @@ OPENAI_API_KEY=
 
 ### 3. Database migrations
 
-Run all SQL files in `supabase/migrations/` in order (001 → 005) in the Supabase SQL editor or via CLI.
+Run all SQL files in `supabase/migrations/` in order (001 → 007) in the Supabase SQL editor or via CLI.
 
 ### 4. Ingest questions
 
@@ -66,6 +66,12 @@ In Supabase Dashboard → Authentication → URL Configuration, set:
 - **Redirect URLs:** `http://localhost:3000/auth/callback`
 
 Email confirmation and password reset links use `/auth/callback`.
+
+## Vercel deployment
+
+**Do not set `NODE_ENV` in Vercel Environment Variables.** Vercel sets it automatically during build; if you add it manually, `npm install` skips devDependencies and the build fails (missing TypeScript/ESLint).
+
+Required env vars: see `.env.example` (`NEXT_PUBLIC_APP_URL`, `ZEPTOMAIL_*`, `CRON_SECRET`, etc.).
 
 ## Scripts
 
