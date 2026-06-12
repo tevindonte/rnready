@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
+import { getReadinessLevel } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -38,12 +39,18 @@ export function SessionReviewClient({
 }: SessionReviewClientProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const scorePct = total > 0 ? Math.round((correct / total) * 100) : 0;
-  const passed = scorePct >= 75;
+  const isMock = mode === "mock_exam";
+  const readiness = getReadinessLevel(scorePct);
+  const readinessLabel =
+    readiness === "Likely" ? "Likely Pass" : readiness === "Borderline" ? "Borderline" : "Needs Work";
+  const passed = !isMock && scorePct >= 75;
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div className="text-center">
-        <p className="text-sm font-medium capitalize text-muted-foreground">{mode} session</p>
+        <p className="text-sm font-medium capitalize text-muted-foreground">
+          {isMock ? "NCLEX mock exam" : `${mode} session`}
+        </p>
         <p className="mt-2 text-5xl font-semibold tabular-nums text-foreground">{scorePct}%</p>
         <p className="mt-1 text-muted-foreground">
           {correct} of {total} correct
@@ -54,10 +61,27 @@ export function SessionReviewClient({
         <div
           className={cn(
             "mx-auto mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium",
-            passed ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+            isMock
+              ? readiness === "Likely"
+                ? "bg-emerald-50 text-emerald-700"
+                : readiness === "Borderline"
+                  ? "bg-amber-50 text-amber-700"
+                  : "bg-red-50 text-red-700"
+              : passed
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-amber-50 text-amber-700"
           )}
         >
-          {passed ? (
+          {isMock ? (
+            <>
+              {readiness === "Likely" ? (
+                <Check className="h-4 w-4" strokeWidth={2} />
+              ) : (
+                <X className="h-4 w-4" strokeWidth={2} />
+              )}
+              Readiness: {readinessLabel}
+            </>
+          ) : passed ? (
             <>
               <Check className="h-4 w-4" strokeWidth={2} />
               {scorePct >= 85 ? "Excellent work" : "Good session. Keep going."}
@@ -69,6 +93,12 @@ export function SessionReviewClient({
             </>
           )}
         </div>
+        {isMock && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Mock exams use NCLEX category proportions and the same readiness labels as your dashboard.
+            The real NCLEX uses adaptive scoring, not a fixed pass percentage.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

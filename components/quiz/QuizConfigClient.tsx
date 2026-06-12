@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, BookOpen, BookOpenCheck, Clock, Layers, Target } from "lucide-react";
+import { ArrowRight, BookOpen, BookOpenCheck, Clock, GraduationCap, Layers, Target } from "lucide-react";
 import {
   NCLEX_CATEGORIES,
-  NCLEX_CATEGORY_SHORT,
   QUIZ_MODES,
+  MOCK_EXAM_MIN_PRACTICE_ANSWERS,
+  MOCK_EXAM_QUESTION_COUNT,
+  MOCK_EXAM_TIME_LIMIT_SECS,
   type NclexCategory,
   type QuizMode,
 } from "@/lib/constants";
-import { SUBCATEGORIES } from "@/lib/subcategories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,10 @@ import {
 import { FreemiumGateModal } from "@/components/FreemiumGateModal";
 import { LogoFull } from "@/components/LogoMark";
 import { QuestionBankSummary } from "@/components/QuestionBankSummary";
+import {
+  getSectionAvailableCount,
+  SectionCategoryPicker,
+} from "@/components/quiz/SectionCategoryPicker";
 
 const MODE_ICONS = {
   clock: Clock,
@@ -47,6 +52,7 @@ export function QuizConfigClient() {
   const [subcategoryCounts, setSubcategoryCounts] = useState<
     Record<string, Record<string, number>>
   >({});
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [countPreset, setCountPreset] = useState<number | "custom">(10);
   const [customCount, setCustomCount] = useState(15);
   const [loading, setLoading] = useState(false);
@@ -57,6 +63,7 @@ export function QuizConfigClient() {
   const [remainingFree, setRemainingFree] = useState(GUEST_MAX_QUESTIONS);
   const [bankTotal, setBankTotal] = useState<number | null>(null);
   const [sessionTitle, setSessionTitle] = useState("");
+  const [practiceAnswerCount, setPracticeAnswerCount] = useState(0);
 
   useEffect(() => {
     router.prefetch("/quiz/guest");
@@ -68,6 +75,11 @@ export function QuizConfigClient() {
       .then((data) => {
         if (typeof data.sharedTotal === "number") setBankTotal(data.sharedTotal);
         if (data.bySubcategory) setSubcategoryCounts(data.bySubcategory);
+        if (Array.isArray(data.byCategory)) {
+          setCategoryCounts(
+            Object.fromEntries(data.byCategory.map((row: { category: string; count: number }) => [row.category, row.count]))
+          );
+        }
       })
       .catch(() => {});
   }, []);
@@ -84,6 +96,7 @@ export function QuizConfigClient() {
 
       const paramMode = searchParams.get("mode") as QuizMode | null;
       const paramCategory = searchParams.get("category");
+      const paramSubcategories = searchParams.get("subcategories");
 
       if (paramMode && QUIZ_MODES.some((m) => m.value === paramMode)) {
         setMode(paramMode);
@@ -91,6 +104,14 @@ export function QuizConfigClient() {
       if (paramCategory && NCLEX_CATEGORIES.includes(paramCategory as NclexCategory)) {
         setSectionCategory(paramCategory);
         setMode("section");
+      }
+      if (paramSubcategories) {
+        setSubcategories(
+          paramSubcategories
+            .split(",")
+            .map((s) => decodeURIComponent(s.trim()))
+            .filter(Boolean)
+        );
       }
 
       if (guest) {
@@ -112,6 +133,12 @@ export function QuizConfigClient() {
         } else {
           setCountPreset(25);
         }
+
+        const { count } = await supabase
+          .from("session_answers")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user!.id);
+        setPracticeAnswerCount(count ?? 0);
       }
 
       setAuthReady(true);
@@ -126,28 +153,26 @@ export function QuizConfigClient() {
         ? Math.min(Math.max(customCount, 1), 100)
         : countPreset;
 
+  const sectionAvailable = getSectionAvailableCount(
+    sectionCategory,
+    subcategories,
+    categoryCounts,
+    subcategoryCounts
+  );
+
   function selectSectionCategory(cat: string) {
     setSectionCategory(cat);
-    const counts = subcategoryCounts[cat] ?? {};
-    const subs = SUBCATEGORIES[cat as NclexCategory] ?? ["General"];
-    const available = subs.filter((s) => (counts[s] ?? 0) > 0);
-    setSubcategories(available.length > 0 ? available : ["General"]);
-  }
-
-  function toggleSubcategory(sub: string) {
-    setSubcategories((prev) =>
-      prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub]
-    );
+    setSubcategories([]);
   }
 
   async function startAuthenticatedSession(questionCount: number) {
     if (mode === "section" && !sectionCategory) {
-      setError("Select a category");
+      setError("Select a category for Section mode");
       setLoading(false);
       return;
     }
-    if (mode === "section" && subcategories.length === 0) {
-      setError("Select at least one subcategory");
+    if (mode === "section" && sectionAvailable === 0) {
+      setError("No questions available for this category selection");
       setLoading(false);
       return;
     }
@@ -158,7 +183,8 @@ export function QuizConfigClient() {
       body: JSON.stringify({
         mode,
         category_filter: mode === "section" ? sectionCategory : null,
-        subcategory_filter: mode === "section" ? subcategories : null,
+        subcategory_filter:
+          mode === "section" && subcategories.length > 0 ? subcategories : null,
         total_questions: questionCount,
         title: sessionTitle.trim() || null,
       }),
@@ -178,6 +204,17 @@ export function QuizConfigClient() {
   }
 
   async function startGuestFlow() {
+    if (mode === "section" && !sectionCategory) {
+      setError("Select a category for Section mode");
+      setLoading(false);
+      return;
+    }
+    if (mode === "section" && sectionAvailable === 0) {
+      setError("No questions available for this category selection");
+      setLoading(false);
+      return;
+    }
+
     if (shouldShowFreemiumGate() || !canStartGuestSession()) {
       setShowGate(true);
       setLoading(false);
@@ -198,10 +235,14 @@ export function QuizConfigClient() {
 
     const categoryParam =
       mode === "section" && sectionCategory ? sectionCategory : null;
+    const subParams =
+      mode === "section" && subcategories.length > 0
+        ? `&subcategories=${subcategories.map(encodeURIComponent).join(",")}`
+        : "";
     const res = await fetch(
       `/api/guest/questions?count=${remaining}${
         categoryParam ? `&category=${encodeURIComponent(categoryParam)}` : ""
-      }`
+      }${subParams}`
     );
     const data = await res.json();
     if (res.status === 403) {
@@ -237,6 +278,27 @@ export function QuizConfigClient() {
     router.replace("/quiz/guest");
   }
 
+  async function startMockExam() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "mock_exam",
+          total_questions: MOCK_EXAM_QUESTION_COUNT,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create mock exam");
+      router.push(`/quiz/${data.sessionId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setLoading(false);
+    }
+  }
+
   async function handleStart() {
     setLoading(true);
     setError(null);
@@ -269,15 +331,15 @@ export function QuizConfigClient() {
 
   return (
     <>
-      <div className="mx-auto min-h-screen w-full max-w-[640px] px-4 py-8 sm:max-w-xl sm:px-6 md:max-w-2xl md:py-12 lg:max-w-[640px]">
-        <div className="mb-8 flex items-center justify-between">
-          <LogoFull href={isGuest ? "/" : "/home"} height={28} variant="compact" />
-          {isGuest && (
+      <div className="mx-auto w-full max-w-2xl">
+        {isGuest && (
+          <div className="mb-8 flex items-center justify-between">
+            <LogoFull href="/" height={28} variant="compact" />
             <Button variant="ghost" size="sm" asChild>
               <Link href="/login">Sign in</Link>
             </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-foreground">Configure session</h1>
@@ -300,7 +362,13 @@ export function QuizConfigClient() {
                   <button
                     key={m.value}
                     type="button"
-                    onClick={() => setMode(m.value)}
+                    onClick={() => {
+                      setMode(m.value);
+                      if (m.value !== "section") {
+                        setSectionCategory(null);
+                        setSubcategories([]);
+                      }
+                    }}
                     className={cn(
                       "flex min-h-[120px] flex-col rounded-xl border p-4 text-left transition-all sm:min-h-[132px]",
                       selected
@@ -341,67 +409,14 @@ export function QuizConfigClient() {
           )}
 
           {mode === "section" && (
-            <div className="space-y-4">
-              <div>
-                <p className="mb-3 text-sm font-medium text-foreground">Category</p>
-                <div className="flex flex-wrap gap-2">
-                  {NCLEX_CATEGORIES.map((cat) => {
-                    const selected = sectionCategory === cat;
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        title={cat}
-                        onClick={() => selectSectionCategory(cat)}
-                        className={cn(
-                          "min-h-[44px] rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
-                          selected
-                            ? "border-indigo bg-indigo-50 text-indigo"
-                            : "border-border bg-white text-muted-foreground hover:border-slate-300"
-                        )}
-                      >
-                        {NCLEX_CATEGORY_SHORT[cat]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {sectionCategory && (
-                <div>
-                  <p className="mb-3 text-sm font-medium text-foreground">Subcategories</p>
-                  <div className="space-y-2">
-                    {(SUBCATEGORIES[sectionCategory as NclexCategory] ?? ["General"]).map(
-                      (sub) => {
-                        const count = subcategoryCounts[sectionCategory]?.[sub] ?? 0;
-                        const disabled = count === 0;
-                        const checked = subcategories.includes(sub);
-                        return (
-                          <label
-                            key={sub}
-                            className={cn(
-                              "flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border px-3 py-2",
-                              disabled && "cursor-not-allowed opacity-50",
-                              checked && !disabled && "border-indigo bg-indigo-50"
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              className="h-5 w-5 rounded"
-                              checked={checked}
-                              disabled={disabled}
-                              onChange={() => !disabled && toggleSubcategory(sub)}
-                            />
-                            <span className="flex-1 text-sm">{sub}</span>
-                            <span className="text-xs text-muted-foreground">[{count}]</span>
-                          </label>
-                        );
-                      }
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <SectionCategoryPicker
+              category={sectionCategory}
+              subcategories={subcategories}
+              categoryCounts={categoryCounts}
+              subcategoryCounts={subcategoryCounts}
+              onCategoryChange={selectSectionCategory}
+              onSubcategoriesChange={setSubcategories}
+            />
           )}
 
           {!isGuest && (
@@ -435,7 +450,7 @@ export function QuizConfigClient() {
               </>
             ) : (
               <>
-                <div className="inline-flex rounded-lg border border-border bg-white p-1">
+                <div className="inline-flex flex-wrap gap-1 rounded-lg border border-border bg-white p-1">
                   {[10, 25, 50].map((n) => (
                     <button
                       key={n}
@@ -474,6 +489,12 @@ export function QuizConfigClient() {
                     className="mt-3 w-32"
                   />
                 )}
+                {mode === "section" && sectionCategory && sectionAvailable > 0 && count > sectionAvailable && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    Only {sectionAvailable} question{sectionAvailable === 1 ? "" : "s"} available
+                    for this selection. We will start with up to {sectionAvailable}.
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -485,7 +506,7 @@ export function QuizConfigClient() {
             className="h-12 w-full"
             disabled={
               loading ||
-              (mode === "section" && (!sectionCategory || subcategories.length === 0)) ||
+              (mode === "section" && (!sectionCategory || sectionAvailable === 0)) ||
               (isGuest && (shouldShowFreemiumGate() || remainingFree <= 0))
             }
             onClick={handleStart}
@@ -493,6 +514,45 @@ export function QuizConfigClient() {
             {loading ? "Starting..." : isGuest && hasActiveGuestSession() ? "Resume session" : "Start session"}
             <ArrowRight className="h-4 w-4" />
           </Button>
+
+          {!isGuest && (
+            <div className="rounded-xl border border-border bg-slate-50 p-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
+                  <GraduationCap className="h-5 w-5 text-indigo" strokeWidth={1.5} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">NCLEX mock exam</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {MOCK_EXAM_QUESTION_COUNT} questions pulled to NCLEX category weights. No rationales
+                    until the end. {Math.floor(MOCK_EXAM_TIME_LIMIT_SECS / 3600)}-hour soft timer (real
+                    exam pace).
+                  </p>
+                  {practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS ? (
+                    <p className="mt-2 text-xs text-amber-600">
+                      Answer {MOCK_EXAM_MIN_PRACTICE_ANSWERS - practiceAnswerCount} more practice
+                      questions to unlock ({practiceAnswerCount}/{MOCK_EXAM_MIN_PRACTICE_ANSWERS}).
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Uses Likely Pass / Borderline / Needs Work readiness labels at the end.
+                    </p>
+                  )}
+                  <Button
+                    className="mt-4"
+                    variant="outline"
+                    disabled={
+                      loading || practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS
+                    }
+                    onClick={() => void startMockExam()}
+                  >
+                    {loading ? "Starting..." : "Start mock exam"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

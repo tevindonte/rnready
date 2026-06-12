@@ -26,7 +26,7 @@ function isQuizSession(pathname: string): boolean {
 }
 
 function isMinimalLayout(pathname: string): boolean {
-  return pathname.startsWith("/quiz/config") || isQuizSession(pathname);
+  return isQuizSession(pathname);
 }
 
 function NavLinks({ onNavigate, isGuest }: { onNavigate?: () => void; isGuest?: boolean }) {

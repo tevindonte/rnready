@@ -5,6 +5,7 @@ import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/lib/utils";
 import type { QuizMode } from "@/lib/constants";
+import { MOCK_EXAM_TIME_LIMIT_SECS } from "@/lib/constants";
 
 type TimerProps = {
   mode: QuizMode;
@@ -16,19 +17,21 @@ const TIMED_SECONDS = 90;
 
 export function Timer({ mode, onTimeUp, onTick }: TimerProps) {
   const [elapsed, setElapsed] = useState(0);
-  const [remaining, setRemaining] = useState(TIMED_SECONDS);
+  const [remaining, setRemaining] = useState(
+    mode === "mock_exam" ? MOCK_EXAM_TIME_LIMIT_SECS : TIMED_SECONDS
+  );
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     if (paused) return;
     const interval = setInterval(() => {
-      if (mode === "timed") {
+      if (mode === "timed" || mode === "mock_exam") {
         setRemaining((r) => {
-          if (r <= 1) {
+          if (mode === "timed" && r <= 1) {
             onTimeUp?.();
             return 0;
           }
-          return r - 1;
+          return r > 0 ? r - 1 : 0;
         });
       }
       setElapsed((e) => {
@@ -40,14 +43,16 @@ export function Timer({ mode, onTimeUp, onTick }: TimerProps) {
     return () => clearInterval(interval);
   }, [paused, mode, onTimeUp, onTick]);
 
-  const display = mode === "timed" ? formatDuration(remaining) : formatDuration(elapsed);
+  const display =
+    mode === "timed" || mode === "mock_exam" ? formatDuration(remaining) : formatDuration(elapsed);
   const urgent = mode === "timed" && remaining <= 15;
+  const mockLowTime = mode === "mock_exam" && remaining <= 15 * 60;
 
   return (
     <div className="flex items-center gap-1.5">
       <span
         className={`font-mono text-sm tabular-nums ${
-          urgent ? "font-medium text-red-500" : "text-muted-foreground"
+          urgent || mockLowTime ? "font-medium text-red-500" : "text-muted-foreground"
         }`}
       >
         {display}

@@ -1,4 +1,12 @@
 import {
+  allocateQuestionCountsByNclexWeight,
+  computeCategoryBankShares,
+  computeScarcityMultipliers,
+  selectMockExamAllocation,
+  selectStratifiedQuestionIds,
+  type CategoryQuestion,
+} from "@/lib/nclex-distribution";
+import {
   NCLEX_CATEGORIES,
   NCLEX_WEIGHTS,
   type NclexCategory,
@@ -79,10 +87,18 @@ export async function selectAdaptiveQuestions(
 
   if (!questions?.length) return [];
 
+  const bankShares = computeCategoryBankShares(questions);
+  const scarcity = computeScarcityMultipliers(bankShares);
+
   const pool: { id: string; weight: number }[] = [];
   for (const q of questions) {
     if (seen.has(q.id)) continue;
-    pool.push({ id: q.id, weight: getCategoryWeight(q.category, scores) });
+    const cat = q.category as NclexCategory;
+    const scarcityWeight = scarcity[cat] ?? 1;
+    pool.push({
+      id: q.id,
+      weight: getCategoryWeight(q.category, scores) * scarcityWeight,
+    });
   }
 
   const selected: string[] = [];
@@ -140,19 +156,34 @@ export async function selectMixedQuestions(
   userId: string
 ): Promise<string[]> {
   const supabase = await createClient();
-  const seen = await getSeenQuestionIds(userId);
+  const seen = new Set(await getSeenQuestionIds(userId));
 
-  const { data } = await supabase
+  const { data: questions } = await supabase
     .from("questions")
-    .select("id")
+    .select("id, category")
     .eq("is_custom", false)
-    .eq("needs_review", false)
-    .limit(count * 5);
-  const ids = (data ?? [])
-    .map((q) => q.id)
-    .filter((id) => !seen.includes(id));
+    .eq("needs_review", false);
 
-  return shuffle(ids).slice(0, count);
+  if (!questions?.length) return [];
+
+  const allocation = allocateQuestionCountsByNclexWeight(count);
+  return selectStratifiedQuestionIds(questions as CategoryQuestion[], allocation, seen);
+}
+
+export async function selectMockExamQuestions(userId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const seen = new Set(await getSeenQuestionIds(userId));
+
+  const { data: questions } = await supabase
+    .from("questions")
+    .select("id, category")
+    .eq("is_custom", false)
+    .eq("needs_review", false);
+
+  if (!questions?.length) return [];
+
+  const allocation = selectMockExamAllocation();
+  return selectStratifiedQuestionIds(questions as CategoryQuestion[], allocation, seen);
 }
 
 export async function topUpQuestionIds(

@@ -3,10 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import {
   selectAdaptiveQuestions,
   selectMixedQuestions,
+  selectMockExamQuestions,
   selectSectionQuestions,
   topUpQuestionIds,
 } from "@/lib/adaptive";
 import type { QuizMode } from "@/lib/constants";
+import { MOCK_EXAM_MIN_PRACTICE_ANSWERS, MOCK_EXAM_QUESTION_COUNT } from "@/lib/constants";
 import { touchLastSessionAt } from "@/lib/entitlements";
 import { recalculateSessionScore } from "@/lib/session-score";
 
@@ -29,14 +31,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "mode and total_questions required" }, { status: 400 });
   }
 
+  if (mode === "mock_exam") {
+    const { count: practiceCount } = await supabase
+      .from("session_answers")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if ((practiceCount ?? 0) < MOCK_EXAM_MIN_PRACTICE_ANSWERS) {
+      return NextResponse.json(
+        {
+          error: `Complete at least ${MOCK_EXAM_MIN_PRACTICE_ANSWERS} practice questions before starting a mock exam.`,
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   if (mode === "section" && !categoryFilter) {
     return NextResponse.json({ error: "category_filter required for section mode" }, { status: 400 });
   }
 
   let questionIds: string[] = [];
+  const effectiveCount = mode === "mock_exam" ? MOCK_EXAM_QUESTION_COUNT : totalQuestions;
 
   if (mode === "adaptive") {
-    questionIds = await selectAdaptiveQuestions(user.id, totalQuestions);
+    questionIds = await selectAdaptiveQuestions(user.id, effectiveCount);
+  } else if (mode === "mock_exam") {
+    questionIds = await selectMockExamQuestions(user.id);
   } else if (mode === "section") {
     questionIds = await selectSectionQuestions(
       categoryFilter!,
@@ -45,16 +66,29 @@ export async function POST(request: Request) {
       subcategoryFilter ?? undefined
     );
   } else {
-    questionIds = await selectMixedQuestions(totalQuestions, user.id);
+    questionIds = await selectMixedQuestions(effectiveCount, user.id);
   }
 
   if (questionIds.length === 0) {
+    if (mode === "section") {
+      return NextResponse.json(
+        { error: "No questions available for this category selection." },
+        { status: 400 }
+      );
+    }
+    if (mode === "mock_exam") {
+      return NextResponse.json(
+        { error: "Not enough questions available to build a mock exam." },
+        { status: 400 }
+      );
+    }
+
     const { data: fallback } = await supabase
       .from("questions")
       .select("id")
       .eq("is_custom", false)
       .eq("needs_review", false)
-      .limit(totalQuestions);
+      .limit(effectiveCount);
     questionIds = (fallback ?? []).map((q) => q.id);
   }
 
@@ -62,14 +96,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No questions available. Run the ingestion pipeline first." }, { status: 400 });
   }
 
-  questionIds = await topUpQuestionIds(
-    supabase,
-    questionIds,
-    totalQuestions,
-    mode === "section" && categoryFilter
-      ? { category: categoryFilter, subcategories: subcategoryFilter ?? undefined }
-      : undefined
-  );
+  if (mode === "section" && categoryFilter) {
+    questionIds = await topUpQuestionIds(
+      supabase,
+      questionIds,
+      effectiveCount,
+      { category: categoryFilter, subcategories: subcategoryFilter ?? undefined }
+    );
+  } else if (mode === "adaptive" && questionIds.length < effectiveCount) {
+    const extra = await selectAdaptiveQuestions(
+      user.id,
+      effectiveCount - questionIds.length,
+      questionIds
+    );
+    questionIds = [...questionIds, ...extra].slice(0, effectiveCount);
+  }
 
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
@@ -78,8 +119,8 @@ export async function POST(request: Request) {
       mode,
       category_filter: categoryFilter,
       subcategory_filter: subcategoryFilter,
-      total_questions: Math.min(totalQuestions, questionIds.length),
-      title,
+      total_questions: Math.min(effectiveCount, questionIds.length),
+      title: title ?? (mode === "mock_exam" ? "NCLEX Mock Exam" : null),
       status: "in_progress",
       current_index: 0,
     })
@@ -90,7 +131,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: sessionError?.message ?? "Failed to create session" }, { status: 500 });
   }
 
-  const sessionQuestions = questionIds.slice(0, totalQuestions).map((questionId, index) => ({
+  const sessionQuestions = questionIds.slice(0, effectiveCount).map((questionId, index) => ({
     session_id: session.id,
     question_id: questionId,
     order_index: index,
@@ -106,7 +147,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     sessionId: session.id,
     questionCount: sessionQuestions.length,
-    requestedCount: totalQuestions,
+    requestedCount: effectiveCount,
   });
 }
 

@@ -33,7 +33,11 @@ export const NCLEX_WEIGHTS: Record<NclexCategory, number> = {
   "Psychosocial Integrity": 0.09,
 };
 
-export type QuizMode = "timed" | "review" | "section" | "adaptive" | "custom";
+export type QuizMode = "timed" | "review" | "section" | "adaptive" | "custom" | "mock_exam";
+
+export const MOCK_EXAM_QUESTION_COUNT = 85;
+export const MOCK_EXAM_TIME_LIMIT_SECS = 5 * 60 * 60;
+export const MOCK_EXAM_MIN_PRACTICE_ANSWERS = 50;
 
 export const QUIZ_MODES: {
   value: QuizMode;
@@ -63,7 +67,7 @@ export const QUIZ_MODES: {
   {
     value: "adaptive",
     label: "Adaptive",
-    description: "Weighted toward your weak areas.",
+    description: "Weighted toward weak areas with NCLEX-balanced category mix.",
     icon: "target",
     requiresAuth: true,
   },

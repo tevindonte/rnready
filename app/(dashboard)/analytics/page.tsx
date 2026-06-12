@@ -7,6 +7,7 @@ import { attachSessionScores } from "@/lib/session-score";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/EmptyState";
 import { QuestionBankCategoryGrid, QuestionBankSummary } from "@/components/QuestionBankSummary";
+import { BankDistributionAudit } from "@/components/analytics/BankDistributionAudit";
 import { ScoreChart } from "@/components/analytics/ScoreChart";
 import { SessionHistory } from "@/components/analytics/SessionHistory";
 import { MasteryHexagon } from "@/components/analytics/MasteryHexagon";
@@ -146,6 +147,11 @@ export default async function AnalyticsPage() {
       )}
 
       <QuestionBankCategoryGrid byCategory={questionBank.byCategory} />
+
+      <BankDistributionAudit
+        byCategory={questionBank.byCategory}
+        sharedTotal={questionBank.sharedTotal}
+      />
     </div>
   );
 }

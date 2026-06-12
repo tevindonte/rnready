@@ -1,5 +1,7 @@
-import { BookOpen } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { formatQuestionCount, type QuestionBankStats } from "@/lib/question-bank";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +77,14 @@ export function QuestionBankCategoryGrid({
               {formatQuestionCount(c.count)}
             </p>
             <p className="text-xs text-muted-foreground">in bank</p>
+            {c.count > 0 && (
+              <Button variant="ghost" size="sm" className="mt-2 h-8 px-0 text-indigo" asChild>
+                <Link href={`/quiz/config?mode=section&category=${encodeURIComponent(c.category)}`}>
+                  Drill this category
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            )}
           </div>
         ))}
       </div>
