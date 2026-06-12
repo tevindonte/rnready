@@ -19,9 +19,15 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+function suggestTitleFromNotes(notes: string): string {
+  const firstLine = notes.trim().split(/\n/)[0]?.trim() ?? "";
+  return firstLine.slice(0, 80);
+}
+
 export function StudyGuideClient() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const titleTouchedRef = useRef(false);
   const [tab, setTab] = useState<TabId>("text");
   const [notes, setNotes] = useState("");
   const [url, setUrl] = useState("");
@@ -36,10 +42,14 @@ export function StudyGuideClient() {
   const wordCount = notes.trim() ? notes.trim().split(/\s+/).length : 0;
 
   useEffect(() => {
-    if (!title && tab === "text" && notes.trim()) {
-      setTitle(notes.trim().slice(0, 60));
-    }
-  }, [notes, tab, title]);
+    if (titleTouchedRef.current || tab !== "text" || !notes.trim()) return;
+    setTitle(suggestTitleFromNotes(notes));
+  }, [notes, tab]);
+
+  useEffect(() => {
+    titleTouchedRef.current = false;
+    setTitle("");
+  }, [tab]);
 
   async function handleGenerate() {
     setLoading(true);
@@ -209,9 +219,15 @@ export function StudyGuideClient() {
               id="title"
               placeholder="e.g. Cardiac meds — Week 4"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                titleTouchedRef.current = true;
+                setTitle(e.target.value);
+              }}
               className="min-h-[44px]"
             />
+            <p className="text-xs text-muted-foreground">
+              Auto-suggests the first line of pasted notes until you edit this field.
+            </p>
           </div>
 
           <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
@@ -234,7 +250,7 @@ export function StudyGuideClient() {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating quiz… (10–30 sec)
+                Generating quiz… (30–90 sec)
               </>
             ) : (
               "Generate quiz →"

@@ -106,6 +106,7 @@ async function generateQuizFromText(
       mode: "custom",
       category_filter: categoryHint ?? null,
       total_questions: questionIds.length,
+      title: options.title?.trim() || null,
       status: "in_progress",
       current_index: 0,
     })

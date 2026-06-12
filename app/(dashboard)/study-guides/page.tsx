@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Copy, Share2 } from "lucide-react";
+import { ArrowRight, Copy, Pencil, Share2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type StudyGuide = {
@@ -23,6 +24,9 @@ export default function MyStudyGuidesPage() {
   const [guides, setGuides] = useState<StudyGuide[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/study-guides")
@@ -55,6 +59,42 @@ export default function MyStudyGuidesPage() {
     setTimeout(() => setCopied(null), 2000);
   }
 
+  function startRename(guide: StudyGuide) {
+    setEditingId(guide.id);
+    setEditTitle(guide.title);
+    setRenameError(null);
+  }
+
+  function cancelRename() {
+    setEditingId(null);
+    setEditTitle("");
+    setRenameError(null);
+  }
+
+  async function saveRename(id: string) {
+    const trimmed = editTitle.trim();
+    if (!trimmed) {
+      setRenameError("Name cannot be empty");
+      return;
+    }
+
+    const res = await fetch(`/api/study-guides/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: trimmed }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setRenameError(data.error || "Failed to rename");
+      return;
+    }
+
+    setGuides((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, title: data.guide.title } : g))
+    );
+    cancelRename();
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 pb-24 md:px-0 md:pb-8">
       <div className="flex items-center justify-between gap-4">
@@ -83,7 +123,39 @@ export default function MyStudyGuidesPage() {
           {guides.map((guide) => (
             <Card key={guide.id}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">{guide.title}</CardTitle>
+                {editingId === guide.id ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="min-h-[44px]"
+                      autoFocus
+                    />
+                    {renameError && <p className="text-sm text-red-600">{renameError}</p>}
+                    <div className="flex gap-2">
+                      <Button size="sm" className="min-h-[44px]" onClick={() => saveRename(guide.id)}>
+                        <Check className="mr-1 h-4 w-4" />
+                        Save
+                      </Button>
+                      <Button size="sm" variant="ghost" className="min-h-[44px]" onClick={cancelRename}>
+                        <X className="mr-1 h-4 w-4" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-base">{guide.title}</CardTitle>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-[44px] shrink-0"
+                      onClick={() => startRename(guide)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
                 <CardDescription>
                   {guide.question_count ?? 0} questions · {guide.source_type ?? "text"}
                   {guide.is_public && guide.take_count > 0 && (

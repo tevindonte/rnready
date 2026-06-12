@@ -9,5 +9,6 @@ export function getSessionDisplayName(session: {
 }): string {
   const trimmed = session.title?.trim();
   if (trimmed) return trimmed;
+  if (session.mode === "custom") return "Study guide quiz";
   return `${formatModeLabel(session.mode)} session`;
 }

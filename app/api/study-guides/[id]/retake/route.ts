@@ -39,6 +39,7 @@ export async function POST(
       user_id: user.id,
       mode: "custom",
       total_questions: questionIds.length,
+      title: guide.title,
       status: "in_progress",
       current_index: 0,
     })

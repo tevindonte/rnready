@@ -271,7 +271,7 @@ export default async function HomePage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-foreground">
-                        {session.title?.trim() || formatMode(session.mode)}
+                        {getSessionDisplayName(session)}
                       </span>
                       <span className="text-sm text-muted-foreground">
                         <LocalDateTime value={session.ended_at!} />

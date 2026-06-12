@@ -248,7 +248,7 @@ export function QuizSessionClient({
       explanation: data.explanation,
     });
 
-    if (mode === "review") {
+    if (mode === "review" || mode === "custom") {
       setShowRationale(true);
     } else if (currentIndex >= sessionQuestions.length - 1) {
       await finishSession();
@@ -325,7 +325,7 @@ export function QuizSessionClient({
     isSata: !!isSata,
     onSelect: handleSelect,
     onSubmit: () => submitAnswer(),
-    onNext: showRationale && mode === "review" ? () => advanceOrFinish() : undefined,
+    onNext: showRationale && (mode === "review" || mode === "custom") ? () => advanceOrFinish() : undefined,
     canSubmit: selected.length > 0 && !submitting,
   });
 
@@ -407,7 +407,7 @@ export function QuizSessionClient({
           options={question.options}
           show={showRationale}
           onConfidence={mode === "review" ? submitConfidence : undefined}
-          onNext={mode === "review" ? advanceOrFinish : undefined}
+          onNext={mode === "review" || mode === "custom" ? advanceOrFinish : undefined}
           isLast={currentIndex >= sessionQuestions.length - 1}
         />
       )}
