@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { QuestionBankSummary } from "@/components/QuestionBankSummary";
+import { SubscriptionCard } from "@/components/SubscriptionCard";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -151,6 +152,16 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Suspense
+        fallback={
+          <Card>
+            <CardContent className="h-32 animate-pulse p-6" />
+          </Card>
+        }
+      >
+        <SubscriptionCard />
+      </Suspense>
 
       {bankTotal > 0 && (
         <QuestionBankSummary sharedTotal={bankTotal} customTotal={customBankTotal} />

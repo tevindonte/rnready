@@ -3,7 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/terms", "/privacy"];
-const PUBLIC_PREFIXES = ["/quiz/config", "/quiz/guest", "/api/guest", "/auth/callback"];
+const PUBLIC_PREFIXES = [
+  "/quiz/config",
+  "/quiz/guest",
+  "/api/guest",
+  "/auth/callback",
+  "/api/stripe/webhook",
+  "/api/cron",
+];
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
