@@ -1,14 +1,24 @@
 "use client";
 
 import type { Question } from "@/lib/constants";
+import { QuestionFeedback } from "@/components/quiz/QuestionFeedback";
+import { QuestionTtsButton } from "@/components/quiz/QuestionTtsButton";
 
 type QuestionCardProps = {
   question: Question;
   index: number;
   total: number;
+  ttsEnabled?: boolean;
+  sessionId?: string;
+  showFeedback?: boolean;
 };
 
-export function QuestionCard({ question }: QuestionCardProps) {
+export function QuestionCard({
+  question,
+  ttsEnabled = false,
+  sessionId,
+  showFeedback = false,
+}: QuestionCardProps) {
   const isSata = question.is_ngn && question.ngn_type === "sata";
 
   return (
@@ -24,7 +34,25 @@ export function QuestionCard({ question }: QuestionCardProps) {
           AI-generated from notes
         </span>
       )}
-      <p className="text-lg leading-relaxed text-foreground">{question.question}</p>
+      <div className="flex items-start gap-2">
+        <p className="flex-1 text-lg leading-relaxed text-foreground">{question.question}</p>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {question.question.trim() && (
+            <QuestionTtsButton
+              questionId={question.id}
+              enabled={ttsEnabled}
+              part="question"
+              compact
+              upsellHint="Listen to questions with"
+            />
+          )}
+        </div>
+      </div>
+      {showFeedback && (
+        <div className="mt-2">
+          <QuestionFeedback questionId={question.id} sessionId={sessionId} />
+        </div>
+      )}
     </div>
   );
 }

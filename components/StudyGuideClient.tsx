@@ -162,7 +162,7 @@ export function StudyGuideClient() {
           </CardTitle>
           <CardDescription>
             {tab === "text" && "Up to 6,000 words. Facts, definitions, and comparisons work best."}
-            {tab === "file" && "PDF, PowerPoint, Word, or plain text — max 20 MB."}
+            {tab === "file" && "PDF, PowerPoint, Word, or plain text. Max 20 MB."}
             {tab === "link" && "YouTube video or article URL."}
           </CardDescription>
         </CardHeader>
@@ -290,7 +290,7 @@ export function StudyGuideClient() {
             <Label htmlFor="title">Name this study guide</Label>
             <Input
               id="title"
-              placeholder="e.g. Cardiac meds — Week 4"
+              placeholder="e.g. Cardiac meds, Week 4"
               value={title}
               onChange={(e) => {
                 titleTouchedRef.current = true;

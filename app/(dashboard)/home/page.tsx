@@ -213,7 +213,7 @@ export default async function HomePage() {
       <div className="grid gap-4 sm:grid-cols-3">
         {[
           { label: "Sessions this week", value: sessionsThisWeek },
-          { label: "Avg score", value: hasSessions ? `${avgScore}%` : "—" },
+          { label: "Avg score", value: hasSessions ? `${avgScore}%` : "N/A" },
           { label: "Questions answered", value: questionsAnsweredCount },
         ].map((stat) => (
           <Card key={stat.label}>
@@ -231,8 +231,8 @@ export default async function HomePage() {
           <span>
             <span className="font-medium text-foreground">
               {studyStreak} day{studyStreak === 1 ? "" : "s"} streak
-            </span>{" "}
-            — keep it going
+            </span>
+            . Keep it going.
           </span>
         </div>
       )}

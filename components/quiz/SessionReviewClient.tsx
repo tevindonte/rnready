@@ -60,7 +60,7 @@ export function SessionReviewClient({
           {passed ? (
             <>
               <Check className="h-4 w-4" strokeWidth={2} />
-              {scorePct >= 85 ? "Excellent work" : "Good session — keep going"}
+              {scorePct >= 85 ? "Excellent work" : "Good session. Keep going."}
             </>
           ) : (
             <>
@@ -99,7 +99,7 @@ export function SessionReviewClient({
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-sm text-foreground">{q.question}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {q.category} · Your answer: {q.answerGiven ?? "—"}
+                    {q.category} · Your answer: {q.answerGiven ?? "None"}
                   </p>
                 </div>
                 <ChevronDown

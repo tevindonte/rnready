@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAppUrl, getStripe, isStripeConfigured } from "@/lib/stripe";
+import { getCheckoutBaseUrl, getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function POST() {
 
   const priceId = process.env.STRIPE_PRICE_ID!;
   const customerId = await getOrCreateStripeCustomer(supabase, user);
-  const appUrl = getAppUrl();
+  const appUrl = getCheckoutBaseUrl();
   const stripe = getStripe();
 
   const session = await stripe.checkout.sessions.create({

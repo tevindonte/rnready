@@ -18,7 +18,8 @@ export async function getSharedQuestionBankStats(
   const { count: sharedTotal } = await supabase
     .from("questions")
     .select("*", { count: "exact", head: true })
-    .eq("is_custom", false);
+    .eq("is_custom", false)
+    .eq("needs_review", false);
 
   const byCategory = await Promise.all(
     NCLEX_CATEGORIES.map(async (category) => {
@@ -26,6 +27,7 @@ export async function getSharedQuestionBankStats(
         .from("questions")
         .select("*", { count: "exact", head: true })
         .eq("is_custom", false)
+        .eq("needs_review", false)
         .eq("category", category);
       return { category, count: count ?? 0 };
     })
@@ -55,6 +57,7 @@ export async function getSubcategoryCounts(
         .from("questions")
         .select("*", { count: "exact", head: true })
         .eq("is_custom", false)
+        .eq("needs_review", false)
         .eq("category", cat)
         .eq("subcategory", sub);
       result[cat][sub] = count ?? 0;

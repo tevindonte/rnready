@@ -22,6 +22,14 @@ export function getAppUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
+/** Stripe success/cancel URLs — always localhost when running `next dev`. */
+export function getCheckoutBaseUrl(): string {
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:3000";
+  }
+  return getAppUrl();
+}
+
 export function mapStripeSubscriptionStatus(
   status: Stripe.Subscription.Status
 ): SubscriptionStatus {
@@ -38,4 +46,19 @@ export function mapStripeSubscriptionStatus(
     default:
       return "free";
   }
+}
+
+export function resolveSubscriptionStatus(subscription: Stripe.Subscription): SubscriptionStatus {
+  if (subscription.status === "canceled" || subscription.status === "unpaid") {
+    return "cancelled";
+  }
+  return mapStripeSubscriptionStatus(subscription.status);
+}
+
+export function resolveStripeCustomerId(
+  customer: string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined
+): string | null {
+  if (!customer) return null;
+  if (typeof customer === "string") return customer;
+  return customer.id ?? null;
 }

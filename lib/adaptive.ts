@@ -74,7 +74,8 @@ export async function selectAdaptiveQuestions(
   const { data: questions } = await supabase
     .from("questions")
     .select("id, category")
-    .eq("is_custom", false);
+    .eq("is_custom", false)
+    .eq("needs_review", false);
 
   if (!questions?.length) return [];
 
@@ -118,7 +119,8 @@ export async function selectSectionQuestions(
     .from("questions")
     .select("id")
     .eq("category", category)
-    .eq("is_custom", false);
+    .eq("is_custom", false)
+    .eq("needs_review", false);
 
   if (subcategories?.length) {
     query = query.in("subcategory", subcategories);
@@ -144,6 +146,7 @@ export async function selectMixedQuestions(
     .from("questions")
     .select("id")
     .eq("is_custom", false)
+    .eq("needs_review", false)
     .limit(count * 5);
   const ids = (data ?? [])
     .map((q) => q.id)
@@ -163,7 +166,11 @@ export async function topUpQuestionIds(
   }
 
   const picked = new Set(questionIds);
-  let query = supabase.from("questions").select("id").eq("is_custom", false);
+  let query = supabase
+    .from("questions")
+    .select("id")
+    .eq("is_custom", false)
+    .eq("needs_review", false);
 
   if (filters?.category) {
     query = query.eq("category", filters.category);

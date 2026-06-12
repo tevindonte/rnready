@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,15 +153,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Suspense
-        fallback={
-          <Card>
-            <CardContent className="h-32 animate-pulse p-6" />
-          </Card>
-        }
-      >
-        <SubscriptionCard />
-      </Suspense>
+      <SubscriptionCard />
 
       {bankTotal > 0 && (
         <QuestionBankSummary sharedTotal={bankTotal} customTotal={customBankTotal} />

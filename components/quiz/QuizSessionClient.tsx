@@ -31,7 +31,16 @@ type QuizSessionClientProps = {
   sessionQuestions: SessionQuestion[];
   initialAnswers?: InitialAnswer[];
   initialIndex?: number;
+  premiumFeatures?: {
+    aiTutorChat: boolean;
+    ttsRationales: boolean;
+  };
 };
+
+/** Per-question rationale panel (TTS, tutor). Timed mode keeps rationales for session end. */
+function showsRationaleAfterAnswer(mode: QuizMode): boolean {
+  return mode === "review" || mode === "custom" || mode === "section" || mode === "adaptive";
+}
 
 function buildAnsweredMap(
   initialAnswers: InitialAnswer[],
@@ -78,6 +87,7 @@ export function QuizSessionClient({
   sessionQuestions,
   initialAnswers = [],
   initialIndex,
+  premiumFeatures,
 }: QuizSessionClientProps) {
   const router = useRouter();
   const resumeIndex = resolveResumeIndex(session, sessionQuestions, initialAnswers, initialIndex);
@@ -106,6 +116,7 @@ export function QuizSessionClient({
   const question = current?.questions;
   const isSata = question?.is_ngn && question?.ngn_type === "sata";
   const mode = session.mode as QuizMode;
+  const perQuestionRationale = showsRationaleAfterAnswer(mode);
   const answeredCount = Object.keys(answered).length;
 
   const saveProgress = useCallback(
@@ -248,7 +259,7 @@ export function QuizSessionClient({
       explanation: data.explanation,
     });
 
-    if (mode === "review" || mode === "custom") {
+    if (perQuestionRationale) {
       setShowRationale(true);
     } else if (currentIndex >= sessionQuestions.length - 1) {
       await finishSession();
@@ -325,7 +336,7 @@ export function QuizSessionClient({
     isSata: !!isSata,
     onSelect: handleSelect,
     onSubmit: () => submitAnswer(),
-    onNext: showRationale && (mode === "review" || mode === "custom") ? () => advanceOrFinish() : undefined,
+    onNext: showRationale && perQuestionRationale ? () => advanceOrFinish() : undefined,
     canSubmit: selected.length > 0 && !submitting,
   });
 
@@ -359,7 +370,14 @@ export function QuizSessionClient({
         onCalculatorOpen={() => saveTools(scratchPad, eliminated, true)}
         showRationale={showRationale}
       >
-        <QuestionCard question={question} index={currentIndex} total={sessionQuestions.length} />
+        <QuestionCard
+          question={question}
+          index={currentIndex}
+          total={sessionQuestions.length}
+          ttsEnabled={premiumFeatures?.ttsRationales ?? false}
+          sessionId={session.id}
+          showFeedback
+        />
 
         <div className="mx-auto mt-8 w-full max-w-[680px] space-y-3 pb-20 lg:pb-0">
           {Object.entries(question.options)
@@ -406,8 +424,11 @@ export function QuizSessionClient({
           correctAnswer={lastResult.correctAnswer}
           options={question.options}
           show={showRationale}
+          sessionId={session.id}
+          questionId={question.id}
+          premiumFeatures={premiumFeatures}
           onConfidence={mode === "review" ? submitConfidence : undefined}
-          onNext={mode === "review" || mode === "custom" ? advanceOrFinish : undefined}
+          onNext={perQuestionRationale ? advanceOrFinish : undefined}
           isLast={currentIndex >= sessionQuestions.length - 1}
         />
       )}

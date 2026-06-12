@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const category = searchParams.get("category");
 
   const supabase = createAdminClient();
-  let query = supabase.from("questions").select("*").eq("is_custom", false);
+  let query = supabase.from("questions").select("*").eq("is_custom", false).eq("needs_review", false);
 
   if (category) {
     query = query.eq("category", category);

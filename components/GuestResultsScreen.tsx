@@ -34,7 +34,7 @@ export function GuestResultsScreen({ correct, total }: GuestResultsScreenProps) 
           {passed ? (
             <>
               <Check className="h-4 w-4" strokeWidth={2} />
-              Strong start — keep practicing
+              Strong start. Keep practicing.
             </>
           ) : (
             <>

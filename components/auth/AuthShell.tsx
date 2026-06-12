@@ -27,7 +27,7 @@ export function AuthShell({ children }: AuthShellProps) {
             First try.
           </h2>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
-            Join nursing students using AI-powered practice to understand the material — not just
+            Join nursing students using AI-powered practice to understand the material, not just
             memorize it.
           </p>
           <ul className="mt-8 space-y-4">

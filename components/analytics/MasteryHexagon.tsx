@@ -131,7 +131,7 @@ export function MasteryHexagon({ scores, weightedScore }: MasteryHexagonProps) {
         <div className="mt-4 rounded-xl border border-border bg-white p-4 text-center shadow-card">
           <p className="text-sm font-medium text-foreground">{scores[active].category}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">
-            {scores[active].count > 0 ? `${scores[active].pct}%` : "—"}
+            {scores[active].count > 0 ? `${scores[active].pct}%` : "N/A"}
           </p>
           <p className="text-xs text-muted-foreground">
             {scores[active].count} questions answered

@@ -26,7 +26,7 @@ export function CategoryBars({ scores }: CategoryBarsProps) {
           <div className="mb-1 flex justify-between text-sm">
             <span className="truncate pr-2">{s.category}</span>
             <span className="shrink-0 text-muted-foreground">
-              {s.count > 0 ? `${s.pct}% (${s.count})` : "—"}
+              {s.count > 0 ? `${s.pct}% (${s.count})` : "N/A"}
               {s.isWeak && s.count > 0 && (
                 <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
                   Weak

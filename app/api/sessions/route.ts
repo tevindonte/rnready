@@ -53,6 +53,7 @@ export async function POST(request: Request) {
       .from("questions")
       .select("id")
       .eq("is_custom", false)
+      .eq("needs_review", false)
       .limit(totalQuestions);
     questionIds = (fallback ?? []).map((q) => q.id);
   }

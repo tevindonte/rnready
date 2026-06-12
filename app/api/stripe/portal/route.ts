@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAppUrl, getStripe, isStripeConfigured } from "@/lib/stripe";
+import { getCheckoutBaseUrl, getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export async function POST() {
   const stripe = getStripe();
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: `${getAppUrl()}/settings`,
+    return_url: `${getCheckoutBaseUrl()}/settings`,
   });
 
   return NextResponse.json({ url: portalSession.url });

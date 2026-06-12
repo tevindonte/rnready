@@ -122,7 +122,7 @@ export default async function AnalyticsPage() {
               <CardContent className="p-4">
                 <p className="truncate text-sm font-medium text-foreground">{s.category}</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {s.count > 0 ? `${s.pct}%` : "—"}
+                  {s.count > 0 ? `${s.pct}%` : "N/A"}
                 </p>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
                   <div

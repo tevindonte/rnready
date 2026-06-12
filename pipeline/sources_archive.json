@@ -1,5 +1,149 @@
 [
   {
+    "id": "pdf:archer_infectious",
+    "type": "pdf_qa_pair",
+    "questions": "../new sources/Adult Health Infectious Disease Questions.pdf",
+    "answers": "../new sources/Adult Health Infectious Disease Answers.pdf",
+    "label": "Archer Review - Adult Health Infectious Disease",
+    "source_format": "exam_book",
+    "chunk_size_words": 6000,
+    "chunk_overlap_words": 300,
+    "processed_at": "2026-06-12T20:44:25.347006+00:00",
+    "stats": {
+      "inserted": 45,
+      "failed": 0
+    }
+  },
+  {
+    "id": "pdf:archer_critical_care",
+    "type": "pdf_qa_pair",
+    "questions": "../new sources/CRITICAL CARE QUESTIONS.pdf",
+    "answers": "../new sources/CRITICAL CARE ANSWERS.pdf",
+    "label": "Archer Review - Critical Care",
+    "source_format": "exam_book",
+    "chunk_size_words": 6000,
+    "chunk_overlap_words": 300,
+    "processed_at": "2026-06-12T17:05:05.392617+00:00",
+    "stats": {
+      "inserted": 55,
+      "failed": 0
+    }
+  },
+  {
+    "id": "pdf:archer_critical_care",
+    "type": "pdf_qa_pair",
+    "questions": "../new sources/CRITICAL CARE QUESTIONS.pdf",
+    "answers": "../new sources/CRITICAL CARE ANSWERS.pdf",
+    "label": "Archer Review - Critical Care",
+    "source_format": "exam_book",
+    "chunk_size_words": 6000,
+    "chunk_overlap_words": 300,
+    "processed_at": "2026-06-12T17:04:25.552855+00:00",
+    "stats": {
+      "inserted": 61,
+      "failed": 0
+    }
+  },
+  {
+    "id": "pdf:archer_critical_care",
+    "type": "pdf_qa_pair",
+    "questions": "../new sources/CRITICAL CARE QUESTIONS.pdf",
+    "answers": "../new sources/CRITICAL CARE ANSWERS.pdf",
+    "label": "Archer Review - Critical Care",
+    "source_format": "exam_book",
+    "chunk_size_words": 6000,
+    "chunk_overlap_words": 300,
+    "processed_at": "2026-06-12T17:04:05.424522+00:00",
+    "stats": {
+      "inserted": 54,
+      "failed": 0
+    }
+  },
+  {
+    "id": "pdf:archer_cardio",
+    "type": "pdf_qa_pair",
+    "questions": "../new sources/Adult Health Cardio Questions.pdf",
+    "answers": "../new sources/Adult Health Cardio Answers.pdf",
+    "label": "Archer Review - Adult Health Cardio",
+    "source_format": "exam_book",
+    "chunk_size_words": 6000,
+    "chunk_overlap_words": 300,
+    "processed_at": "2026-06-12T15:34:22.962373+00:00",
+    "stats": {
+      "inserted": 31,
+      "failed": 0
+    }
+  },
+  {
+    "id": "quizlet:nclex_export_001",
+    "type": "quizlet",
+    "value": "../new sources/quizlet export.txt",
+    "label": "Quizlet NCLEX Export",
+    "processed_at": "2026-06-12T15:34:16.555681+00:00",
+    "stats": {
+      "inserted": 200,
+      "failed": 0
+    }
+  },
+  {
+    "id": "pdf:archer_cardio",
+    "type": "pdf_qa_pair",
+    "questions": "../new sources/Adult Health Cardio Questions.pdf",
+    "answers": "../new sources/Adult Health Cardio Answers.pdf",
+    "label": "Archer Review - Adult Health Cardio",
+    "source_format": "exam_book",
+    "chunk_size_words": 6000,
+    "chunk_overlap_words": 300,
+    "processed_at": "2026-06-12T15:33:05.311649+00:00",
+    "stats": {
+      "inserted": 32,
+      "failed": 0
+    }
+  },
+  {
+    "id": "quizlet:nclex_export_001",
+    "type": "quizlet",
+    "value": "../new sources/quizlet export.txt",
+    "label": "Quizlet NCLEX Export",
+    "processed_at": "2026-06-12T15:31:51.800408+00:00",
+    "stats": {
+      "inserted": 200,
+      "failed": 0
+    }
+  },
+  {
+    "id": "pdf:kaplan_prep_plus",
+    "type": "pdf",
+    "value": "../NCLEX-RN Prep Plus 2018_ 2 Prac - Kaplan Nursing.pdf",
+    "page_start": 112,
+    "page_end": 635,
+    "chunk_size_words": 7000,
+    "chunk_overlap_words": 400,
+    "label": "Kaplan NCLEX-RN Prep Plus - Chapter Quizzes",
+    "source_format": "exam_book",
+    "processed_at": "2026-06-12T14:51:58.247223+00:00",
+    "stats": {
+      "inserted": 433,
+      "failed": 2
+    }
+  },
+  {
+    "id": "pdf:saunders_qa",
+    "type": "pdf",
+    "value": "../saunders-qa-review-for-the-nclex-rn-examination-7th-ed.pdf",
+    "page_start": 100,
+    "page_end": 1866,
+    "chunk_size_words": 7000,
+    "chunk_overlap_words": 400,
+    "label": "Saunders Q&A Review 7th Ed - Full Question Bank",
+    "source_format": "exam_book",
+    "processed_at": "2026-06-12T07:52:14.272305+00:00",
+    "stats": {
+      "inserted": 1528,
+      "failed": 0
+    }
+  },
+  {
     "id": "yt:levelup_001",
     "type": "youtube",
     "value": "https://www.youtube.com/watch?v=ghBjTfFErK8",

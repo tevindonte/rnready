@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "RNReady — NCLEX Prep",
+  title: "RNReady | NCLEX Prep",
   description: "AI-assisted NCLEX preparation for nursing students",
 };
 

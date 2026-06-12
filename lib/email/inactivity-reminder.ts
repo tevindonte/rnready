@@ -65,7 +65,7 @@ export async function sendInactivityReminders(): Promise<InactivityResult> {
     try {
       await sendZeptoMail({
         to: { email, name: profile.name ?? undefined },
-        subject: "Pick up where you left off — RNReady",
+        subject: "Pick up where you left off | RNReady",
         html: `
           <p>Hi ${name},</p>
           <p>Haven't studied in a few days? A short session now keeps your readiness on track.</p>

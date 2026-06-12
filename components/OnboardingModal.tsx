@@ -21,7 +21,7 @@ type OnboardingModalProps = {
 };
 
 const MODES: { value: QuizMode; label: string; description: string }[] = [
-  { value: "review", label: "Review", description: "Best for learning — explanations after each answer" },
+  { value: "review", label: "Review", description: "Best for learning. Explanations after each answer." },
   { value: "timed", label: "Timed", description: "Simulate exam pressure with a 90-second timer" },
   { value: "section", label: "Section", description: "Focus on one NCLEX category at a time" },
 ];

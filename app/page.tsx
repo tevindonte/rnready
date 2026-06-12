@@ -113,7 +113,7 @@ export default async function LandingPage() {
               </h2>
               <p className="mt-3 text-muted-foreground">
                 Full-width answer cards, question navigation, scratch pad, calculator, and lab
-                values — everything you need on test day.
+                values, and everything you need on test day.
               </p>
             </div>
             <div className="rounded-xl border border-border bg-white p-5 shadow-card">

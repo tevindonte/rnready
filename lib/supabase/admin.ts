@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { getSupabaseUrl, requireSupabaseServiceKey } from "@/lib/supabase/env";
 
 export function createAdminClient() {
   const url = getSupabaseUrl();
-  const key = process.env.SUPABASE_SERVICE_KEY || getSupabaseAnonKey();
+  const key = requireSupabaseServiceKey();
   return createClient(url, key);
 }

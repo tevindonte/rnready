@@ -7,9 +7,11 @@ from openai import OpenAI
 import env_config  # noqa: F401
 from db import get_supabase, warn_if_legacy_schema
 from env_config import require_env
-from process import process_text
+from process import process_parsed_items, process_text
 from source_registry import archive_source, load_sources
-from sources.pdf import fetch_pdf_text
+from sources.pdf import fetch_pdf_qa_pair_text, fetch_pdf_text
+from sources.quizlet import parse_quizlet_export
+from sources.transcript import fetch_transcript_file
 from sources.web import fetch_web_text
 from sources.youtube import fetch_youtube_transcript
 
@@ -30,20 +32,32 @@ def resolve_path(value: str) -> Path:
     return REPO_ROOT / value
 
 
-def fetch_source(source: dict) -> str:
+def fetch_source(source: dict) -> str | list[dict]:
     source_type = source["type"]
-    value = source["value"]
     if source_type == "youtube":
-        return fetch_youtube_transcript(value)
+        return fetch_youtube_transcript(source["value"])
     if source_type == "pdf":
-        path = resolve_path(value)
+        path = resolve_path(source["value"])
         return fetch_pdf_text(
             str(path),
             page_start=source.get("page_start"),
             page_end=source.get("page_end"),
         )
+    if source_type == "pdf_qa_pair":
+        q_path = resolve_path(source["questions"])
+        a_path = resolve_path(source["answers"])
+        return fetch_pdf_qa_pair_text(
+            str(q_path),
+            str(a_path),
+            page_start=source.get("page_start"),
+            page_end=source.get("page_end"),
+        )
+    if source_type == "text":
+        return fetch_transcript_file(str(resolve_path(source["value"])))
+    if source_type == "quizlet":
+        return parse_quizlet_export(str(resolve_path(source["value"])))
     if source_type == "web":
-        return fetch_web_text(value)
+        return fetch_web_text(source["value"])
     raise ValueError(f"Unknown source type: {source_type}")
 
 
@@ -53,19 +67,27 @@ def process_source(client: OpenAI, db, source: dict) -> tuple[int, int, bool, di
     logger.info("Processing source: %s", label)
 
     try:
-        raw_text = fetch_source(source)
+        payload = fetch_source(source)
     except Exception as exc:
         logger.error("Failed to fetch %s: %s", source_id, exc)
         return 0, 1, False, {}
 
-    if not raw_text.strip():
+    if source["type"] == "quizlet":
+        if not isinstance(payload, list) or not payload:
+            logger.warning("No parsed Quizlet cards for %s", source_id)
+            return 0, 1, False, {}
+        logger.info("  Parsed %d Quizlet cards", len(payload))
+        inserted, failed, stats = process_parsed_items(client, db, payload, source_id)
+        return inserted, failed, True, stats
+
+    if not isinstance(payload, str) or not payload.strip():
         logger.warning("Empty text for %s", source_id)
         return 0, 1, False, {}
 
     inserted, failed, stats = process_text(
         client,
         db,
-        raw_text,
+        payload,
         source_id,
         chunk_size_words=source.get("chunk_size_words", 4000),
         chunk_overlap_words=source.get("chunk_overlap_words", 200),

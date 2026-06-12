@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { QuizSessionClient } from "@/components/quiz/QuizSessionClient";
 import type { Question, Session } from "@/lib/constants";
+import { canUseAiTutor, canUseTtsRationales, type SubscriptionStatus } from "@/lib/entitlements";
 
 export default async function QuizSessionPage({
   params,
@@ -42,12 +43,25 @@ export default async function QuizSessionPage({
     questions: row.questions as unknown as Question,
   }));
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("subscription_status")
+    .eq("id", user.id)
+    .single();
+
+  const subscriptionStatus = (profile?.subscription_status ?? "free") as SubscriptionStatus;
+  const premiumFeatures = {
+    aiTutorChat: canUseAiTutor(subscriptionStatus),
+    ttsRationales: canUseTtsRationales(subscriptionStatus),
+  };
+
   return (
     <QuizSessionClient
       session={session as Session}
       sessionQuestions={sessionQuestions}
       initialAnswers={existingAnswers ?? []}
       initialIndex={cachedIndex}
+      premiumFeatures={premiumFeatures}
     />
   );
 }

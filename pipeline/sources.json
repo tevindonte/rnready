@@ -1,26 +1,11 @@
 [
   {
-    "id": "pdf:saunders_qa",
-    "type": "pdf",
-    "value": "../saunders-qa-review-for-the-nclex-rn-examination-7th-ed.pdf",
-    "page_start": 100,
-    "page_end": 1866,
-    "chunk_size_words": 7000,
-    "chunk_overlap_words": 400,
-    "label": "Saunders Q&A Review 7th Ed - Full Question Bank",
-    "source_format": "exam_book",
+    "id": "txt:archer_ngn_webinar",
+    "type": "text",
+    "value": "../new sources/youtube transcript.txt",
+    "label": "Archer Review NGN Webinar Transcript",
+    "chunk_size_words": 5000,
+    "chunk_overlap_words": 300,
     "enabled": true
-  },
-  {
-    "id": "pdf:kaplan_prep_plus",
-    "type": "pdf",
-    "value": "../NCLEX-RN Prep Plus 2018_ 2 Prac - Kaplan Nursing.pdf",
-    "page_start": 112,
-    "page_end": 635,
-    "chunk_size_words": 7000,
-    "chunk_overlap_words": 400,
-    "label": "Kaplan NCLEX-RN Prep Plus - Chapter Quizzes",
-    "source_format": "exam_book",
-    "enabled": false
   }
 ]

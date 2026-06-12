@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ArrowRight, Check, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ExplanationAudio } from "@/components/quiz/ExplanationAudio";
+import { TutorChat } from "@/components/quiz/TutorChat";
 import { cn } from "@/lib/utils";
 
 const CONFIDENCE_LABELS = [
@@ -23,6 +25,12 @@ type RationalePanelProps = {
   onNext?: () => void;
   isLast?: boolean;
   showAiUpsell?: boolean;
+  sessionId?: string;
+  questionId?: string;
+  premiumFeatures?: {
+    aiTutorChat: boolean;
+    ttsRationales: boolean;
+  };
 };
 
 export function RationalePanel({
@@ -35,6 +43,9 @@ export function RationalePanel({
   onNext,
   isLast,
   showAiUpsell,
+  sessionId,
+  questionId,
+  premiumFeatures,
 }: RationalePanelProps) {
   const [confidence, setConfidence] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -64,13 +75,22 @@ export function RationalePanel({
           ) : (
             <>
               <X className="h-4 w-4" strokeWidth={2} />
-              Incorrect — correct answer was {correctAnswer}
+              Incorrect. The correct answer was {correctAnswer}
             </>
           )}
         </div>
 
         {explanation ? (
-          <p className="text-sm leading-relaxed text-foreground">{explanation}</p>
+          <>
+            <p className="text-sm leading-relaxed text-foreground">{explanation}</p>
+            {questionId && (
+              <ExplanationAudio
+                questionId={questionId}
+                enabled={premiumFeatures?.ttsRationales ?? false}
+                hasExplanation
+              />
+            )}
+          </>
         ) : showAiUpsell ? (
           <p className="text-sm text-muted-foreground">
             Sign up free to unlock AI-powered explanations for every question.
@@ -100,6 +120,14 @@ export function RationalePanel({
               </div>
             )}
           </div>
+        )}
+
+        {sessionId && questionId && (
+          <TutorChat
+            sessionId={sessionId}
+            questionId={questionId}
+            enabled={premiumFeatures?.aiTutorChat ?? false}
+          />
         )}
 
         {onConfidence && confidence === null && (
