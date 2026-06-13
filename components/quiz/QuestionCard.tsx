@@ -23,7 +23,15 @@ export function QuestionCard({
 
   return (
     <div className="mx-auto w-full max-w-[680px]">
-      <p className="mb-3 text-xs text-muted-foreground">{question.category}</p>
+      <p className="mb-3 text-xs text-muted-foreground">
+        {question.category}
+        {question.subcategory && question.subcategory !== "General" && (
+          <>
+            {" "}
+            <span className="text-foreground/70">› {question.subcategory}</span>
+          </>
+        )}
+      </p>
       {isSata && (
         <span className="mb-4 inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-amber-200">
           Select all that apply

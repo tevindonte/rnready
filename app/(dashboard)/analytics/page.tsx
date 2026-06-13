@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/EmptyState";
 import { QuestionBankCategoryGrid, QuestionBankSummary } from "@/components/QuestionBankSummary";
 import { BankDistributionAudit } from "@/components/analytics/BankDistributionAudit";
+import { SubcategoryBankBreakdown } from "@/components/analytics/SubcategoryBankBreakdown";
 import { ScoreChart } from "@/components/analytics/ScoreChart";
 import { SessionHistory } from "@/components/analytics/SessionHistory";
 import { MasteryHexagon } from "@/components/analytics/MasteryHexagon";
@@ -209,6 +210,13 @@ export default async function AnalyticsPage() {
         byCategory={questionBank.byCategory}
         sharedTotal={questionBank.sharedTotal}
       />
+
+      {questionBank.bySubcategory && questionBank.sharedTotal > 0 && (
+        <SubcategoryBankBreakdown
+          byCategory={questionBank.byCategory}
+          bySubcategory={questionBank.bySubcategory}
+        />
+      )}
     </div>
   );
 }

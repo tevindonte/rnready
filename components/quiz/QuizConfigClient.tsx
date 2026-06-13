@@ -376,7 +376,10 @@ export function QuizConfigClient() {
 
         <div className="space-y-8">
           <div>
-            <p className="mb-3 text-sm font-medium text-foreground">Study mode</p>
+            <p className="mb-3 text-sm font-medium text-foreground">Practice modes</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Quick daily drills — pick one, set your count, then start the quiz below.
+            </p>
             <div className="grid grid-cols-2 gap-3">
               {QUIZ_MODES.filter((m) => !isGuest || !m.requiresAuth).map((m) => {
                 const Icon = MODE_ICONS[m.icon];
@@ -440,58 +443,6 @@ export function QuizConfigClient() {
               onCategoryChange={selectSectionCategory}
               onSubcategoriesChange={setSubcategories}
             />
-          )}
-
-          {!isGuest && (
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
-                  <GraduationCap className="h-5 w-5 text-indigo" strokeWidth={1.5} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-foreground">NCLEX mock exam</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {MOCK_EXAM_QUESTION_COUNT} questions, NCLEX category weights,{" "}
-                    {Math.floor(MOCK_EXAM_TIME_LIMIT_SECS / 3600)}-hour soft timer. Full exam
-                    simulation — rationales only at the end.
-                  </p>
-                  {mockOverlapWarnings.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {mockOverlapWarnings.slice(0, 2).map((w) => (
-                        <p
-                          key={w.category}
-                          className={cn(
-                            "text-xs",
-                            w.overlapRisk === "high" ? "text-amber-700" : "text-muted-foreground"
-                          )}
-                        >
-                          {w.message}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                  {practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS ? (
-                    <p className="mt-2 text-xs text-amber-600">
-                      Answer {MOCK_EXAM_MIN_PRACTICE_ANSWERS - practiceAnswerCount} more practice
-                      questions to unlock ({practiceAnswerCount}/{MOCK_EXAM_MIN_PRACTICE_ANSWERS}).
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Separate readiness score from daily practice at the end.
-                    </p>
-                  )}
-                  <Button
-                    className="mt-4"
-                    variant="outline"
-                    disabled={loading || practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS}
-                    onClick={() => void startMockExam()}
-                  >
-                    {loading ? "Starting..." : "Start mock exam"}
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
           )}
 
           {!isGuest && (
@@ -601,6 +552,61 @@ export function QuizConfigClient() {
           </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
+
+          {!isGuest && (
+            <>
+              <div className="relative py-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <p className="relative mx-auto w-fit bg-background px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Ready for the real thing?
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-navy p-6 text-white shadow-lg">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <GraduationCap className="h-5 w-5 text-indigo-300" strokeWidth={1.5} />
+                      <p className="text-base font-semibold tracking-tight">NCLEX mock exam</p>
+                      <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-indigo-100">
+                        {MOCK_EXAM_QUESTION_COUNT} Q · {Math.floor(MOCK_EXAM_TIME_LIMIT_SECS / 3600)} hr
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                      Full exam simulation — NCLEX-weighted categories, no rationales until the end,
+                      Likely Pass / Borderline / Needs Work at finish. Not a practice mode.
+                    </p>
+                    {mockOverlapWarnings.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        {mockOverlapWarnings.slice(0, 2).map((w) => (
+                          <p key={w.category} className="text-xs text-amber-200/90">
+                            {w.message}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS ? (
+                      <p className="mt-3 text-xs text-amber-200">
+                        Unlock after {MOCK_EXAM_MIN_PRACTICE_ANSWERS} practice answers (
+                        {practiceAnswerCount}/{MOCK_EXAM_MIN_PRACTICE_ANSWERS}).
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button
+                    size="lg"
+                    className="shrink-0 bg-white text-navy hover:bg-indigo-50"
+                    disabled={loading || practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS}
+                    onClick={() => void startMockExam()}
+                  >
+                    {loading ? "Starting..." : "Start mock exam"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="rounded-xl border-2 border-indigo bg-indigo-50/30 p-5">
             <p className="text-sm font-medium text-foreground">Step 2 — Start the quiz</p>
