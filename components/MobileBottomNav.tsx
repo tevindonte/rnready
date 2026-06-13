@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, BookOpen, FileText, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isNavActive } from "@/lib/nav";
 
 const navItems = [
   { href: "/home", label: "Home", icon: Home, authOnly: true },
@@ -24,9 +25,7 @@ export function MobileBottomNav({ isGuest = false }: MobileBottomNavProps) {
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
       <div className="flex justify-around py-2">
         {items.map(({ href, label, icon: Icon }) => {
-          const active =
-            pathname === href ||
-            (href !== "/home" && pathname.startsWith(href));
+          const active = isNavActive(pathname, href);
           return (
             <Link
               key={href}

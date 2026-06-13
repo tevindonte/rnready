@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { LogoFull } from "@/components/LogoMark";
 import { GuestBanner } from "@/components/GuestBanner";
+import { isActiveQuizSession, isNavActive } from "@/lib/nav";
 import { useEffect, useState } from "react";
 
 const navItems = [
@@ -22,7 +23,7 @@ const navItems = [
 ];
 
 function isQuizSession(pathname: string): boolean {
-  return /^\/quiz\/(guest|[\w-]+)$/.test(pathname) && !pathname.endsWith("/review");
+  return isActiveQuizSession(pathname);
 }
 
 function isMinimalLayout(pathname: string): boolean {
@@ -35,10 +36,7 @@ function NavLinks({ onNavigate, isGuest }: { onNavigate?: () => void; isGuest?: 
   return (
     <nav className="flex flex-col gap-1">
       {items.map(({ href, label, icon: Icon }) => {
-        const active =
-          pathname === href ||
-          (href === "/home" && pathname === "/home") ||
-          (href !== "/home" && pathname.startsWith(href));
+        const active = isNavActive(pathname, href);
         return (
           <Link
             key={href}
