@@ -94,7 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border bg-white lg:hidden">
+      <header className="sticky top-0 z-40 border-b border-border bg-white md:hidden">
         <div className="flex h-14 items-center justify-between px-4">
           <LogoFull href="/home" height={32} />
           <Sheet>
@@ -131,7 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </header>
 
       <div className="flex">
-        <aside className="hidden w-60 shrink-0 bg-navy lg:block">
+        <aside className="hidden w-60 shrink-0 bg-navy md:block">
           <div className="sticky top-0 flex h-screen flex-col p-5">
             <div className="mb-8 px-1">
               <LogoFull href="/home" height={40} />
@@ -156,7 +156,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <main className="flex-1 p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">{children}</main>
+        <main className="flex-1 p-4 pb-24 sm:p-6 md:p-8 md:pb-8">{children}</main>
       </div>
 
       <MobileBottomNav isGuest={isGuest} />

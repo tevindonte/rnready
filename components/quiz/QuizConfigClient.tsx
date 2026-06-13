@@ -29,7 +29,6 @@ import {
   type GuestSession,
 } from "@/lib/guest";
 import { FreemiumGateModal } from "@/components/FreemiumGateModal";
-import { LogoFull } from "@/components/LogoMark";
 import { QuestionBankSummary } from "@/components/QuestionBankSummary";
 import {
   getSectionAvailableCount,
@@ -341,28 +340,34 @@ export function QuizConfigClient() {
 
   if (!authReady) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-[640px] items-center justify-center px-6">
+      <div className="mx-auto flex max-w-2xl items-center justify-center py-24">
         <div className="h-8 w-48 animate-pulse rounded-lg bg-slate-100" />
       </div>
     );
   }
 
+  const modeMeta = QUIZ_MODES.find((m) => m.value === mode);
+  const startLabel =
+    loading
+      ? "Starting..."
+      : isGuest && hasActiveGuestSession()
+        ? "Resume quiz"
+        : mode === "mock_exam"
+          ? "Start mock exam"
+          : "Start quiz";
+
   return (
     <>
-      <div className="mx-auto w-full max-w-2xl">
-        {isGuest && (
-          <div className="mb-8 flex items-center justify-between">
-            <LogoFull href="/" height={28} variant="compact" />
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/login">Sign in</Link>
-            </Button>
-          </div>
-        )}
-
+      <div className="mx-auto w-full max-w-2xl pb-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-foreground">Configure session</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Choose how you want to practice today
+          <p className="text-xs font-medium uppercase tracking-wide text-indigo">Step 1 of 2</p>
+          <h1 className="mt-1 text-2xl font-semibold text-foreground">Configure your quiz</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Pick a mode and question count here.{" "}
+            <span className="font-medium text-foreground">
+              Step 2 is the actual test
+            </span>{" "}
+            — full-screen questions, navigation, scratch pad, and timer (if timed).
           </p>
           {bankTotal !== null && bankTotal > 0 && (
             <QuestionBankSummary sharedTotal={bankTotal} variant="inline" className="mt-2" />
@@ -435,6 +440,58 @@ export function QuizConfigClient() {
               onCategoryChange={selectSectionCategory}
               onSubcategoriesChange={setSubcategories}
             />
+          )}
+
+          {!isGuest && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
+                  <GraduationCap className="h-5 w-5 text-indigo" strokeWidth={1.5} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">NCLEX mock exam</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {MOCK_EXAM_QUESTION_COUNT} questions, NCLEX category weights,{" "}
+                    {Math.floor(MOCK_EXAM_TIME_LIMIT_SECS / 3600)}-hour soft timer. Full exam
+                    simulation — rationales only at the end.
+                  </p>
+                  {mockOverlapWarnings.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {mockOverlapWarnings.slice(0, 2).map((w) => (
+                        <p
+                          key={w.category}
+                          className={cn(
+                            "text-xs",
+                            w.overlapRisk === "high" ? "text-amber-700" : "text-muted-foreground"
+                          )}
+                        >
+                          {w.message}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS ? (
+                    <p className="mt-2 text-xs text-amber-600">
+                      Answer {MOCK_EXAM_MIN_PRACTICE_ANSWERS - practiceAnswerCount} more practice
+                      questions to unlock ({practiceAnswerCount}/{MOCK_EXAM_MIN_PRACTICE_ANSWERS}).
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Separate readiness score from daily practice at the end.
+                    </p>
+                  )}
+                  <Button
+                    className="mt-4"
+                    variant="outline"
+                    disabled={loading || practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS}
+                    onClick={() => void startMockExam()}
+                  >
+                    {loading ? "Starting..." : "Start mock exam"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
 
           {!isGuest && (
@@ -545,73 +602,37 @@ export function QuizConfigClient() {
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 
-          <Button
-            size="lg"
-            className="h-12 w-full"
-            disabled={
-              loading ||
-              (mode === "section" && (!sectionCategory || sectionAvailable === 0)) ||
-              (mode === "missed_review" && missedCount === 0) ||
-              (isGuest && (shouldShowFreemiumGate() || remainingFree <= 0))
-            }
-            onClick={handleStart}
-          >
-            {loading ? "Starting..." : isGuest && hasActiveGuestSession() ? "Resume session" : "Start session"}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+          <div className="rounded-xl border-2 border-indigo bg-indigo-50/30 p-5">
+            <p className="text-sm font-medium text-foreground">Step 2 — Start the quiz</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {modeMeta
+                ? `${count} question${count === 1 ? "" : "s"} in ${modeMeta.label} mode. Opens full-screen with answer cards, question navigator, and tools.`
+                : "Opens full-screen questions when you're ready."}
+            </p>
+            <Button
+              size="lg"
+              className="mt-4 h-12 w-full"
+              disabled={
+                loading ||
+                (mode === "section" && (!sectionCategory || sectionAvailable === 0)) ||
+                (mode === "missed_review" && missedCount === 0) ||
+                (isGuest && (shouldShowFreemiumGate() || remainingFree <= 0))
+              }
+              onClick={handleStart}
+            >
+              {startLabel}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
 
-          {!isGuest && (
-            <div className="rounded-xl border border-border bg-slate-50 p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
-                  <GraduationCap className="h-5 w-5 text-indigo" strokeWidth={1.5} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-foreground">NCLEX mock exam</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {MOCK_EXAM_QUESTION_COUNT} questions pulled to NCLEX category weights. No rationales
-                    until the end. {Math.floor(MOCK_EXAM_TIME_LIMIT_SECS / 3600)}-hour soft timer (real
-                    exam pace).
-                  </p>
-                  {mockOverlapWarnings.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {mockOverlapWarnings.slice(0, 2).map((w) => (
-                        <p
-                          key={w.category}
-                          className={cn(
-                            "text-xs",
-                            w.overlapRisk === "high" ? "text-amber-700" : "text-muted-foreground"
-                          )}
-                        >
-                          {w.message}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                  {practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS ? (
-                    <p className="mt-2 text-xs text-amber-600">
-                      Answer {MOCK_EXAM_MIN_PRACTICE_ANSWERS - practiceAnswerCount} more practice
-                      questions to unlock ({practiceAnswerCount}/{MOCK_EXAM_MIN_PRACTICE_ANSWERS}).
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Uses Likely Pass / Borderline / Needs Work readiness labels at the end.
-                    </p>
-                  )}
-                  <Button
-                    className="mt-4"
-                    variant="outline"
-                    disabled={
-                      loading || practiceAnswerCount < MOCK_EXAM_MIN_PRACTICE_ANSWERS
-                    }
-                    onClick={() => void startMockExam()}
-                  >
-                    {loading ? "Starting..." : "Start mock exam"}
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
+          {isGuest && (
+            <p className="text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/login" className="font-medium text-indigo hover:underline">
+                Sign in
+              </Link>{" "}
+              for adaptive mode, mock exams, and analytics.
+            </p>
           )}
         </div>
       </div>
